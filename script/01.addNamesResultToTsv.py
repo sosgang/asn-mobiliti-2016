@@ -14,6 +14,6 @@ pathPdf = "/media/fpoggi/wd-pico/backup/ANVUR/2016-mobiliti/"
 #####mylib.addAsnOutcomesToTsv(tsvOut_temp, tsvOut, pathPdf)
 #mylib.addAuthorsNamesToTsv(tsvIn, tsvOut_temp, pathPdf)
 
-#mylib.addAsnOutcomesToTsv_soloAbilitati(tsvOut_soloAbilitati, tsvOut_soloAbilitati, pathPdf)
+#mylib.addAsnOutcomesToTsv_soloAbilitati(tsvOut_temp, tsvOut_soloAbilitati, pathPdf)
 
 mylib.addAsnOutcomesToTsv_risultati(tsvOut_soloAbilitati, tsvOut, pathPdf)
