@@ -173,12 +173,6 @@ def addAsnOutcomesToTsv_soloAbilitati(tsvIn, tsvOut, pathAsnDownload):
 			fascia = row['FASCIA']
 			settore = row['SETTORE'].replace("/","-")
 			idCv = row['ID_CV']
-			
-			#if fascia == "06-D1":
-			#	print (tsvIn)
-			#	print ("%s - %s - %s" % (quadrimestre, fascia, settore))
-			#	print (row)
-			#	sys.exit()
 				
 			sectors.add("%s__%s__%s" % (quadrimestre, fascia, settore))
 			
@@ -300,12 +294,19 @@ def addAsnOutcomesToTsv_soloAbilitati(tsvIn, tsvOut, pathAsnDownload):
 	print ("Numero idCV rimasti da cercare: " + str(len(tsvDictIdCv.keys())))
 	
 	# SALVO RISULTATI NEL TSV
-	res = "QUADRIMESTRE	FASCIA	SETTORE	BIBL?	ID_CV	COGNOME	NOME	NUMERO DOI ESISTENTI	DOIS ESISTENTI	DOIS NON ESISTENTI	I1	I2	I3	SETTORE CONCORSUALE	SSD	S1	S2	S3	ESITO_SOLOABILITATI	VALIDITA_DAL_SOLOABILITATI	VALIDITA_AL_SOLOABILITATI	NOTE_SOLOABILITATI\n"
+	res = "QUADRIMESTRE	FASCIA	SETTORE	BIBL?	ID_CV	COGNOME	NOME	NUMERO DOI ESISTENTI	DOIS ESISTENTI	DOIS NON ESISTENTI	I1	I2	I3	SETTORE CONCORSUALE	SSD	S1	S2	S3	ABILITATO_SOLOABILITATI	VALIDITA_DAL_SOLOABILITATI	VALIDITA_AL_SOLOABILITATI	NOTE_SOLOABILITATI\n"
+	'''
 	for settore in esitiMap:
 		for quadrimestre in esitiMap[settore]:
 			for fascia in esitiMap[settore][quadrimestre]:
 				for idCv in esitiMap[settore][quadrimestre][fascia]:
 					mapPersona = esitiMap[settore][quadrimestre][fascia][idCv]
+	'''
+	for quadrimestre in esitiMap:
+		for fascia in esitiMap[quadrimestre]:
+			for settore in esitiMap[quadrimestre][fascia]:
+				for idCv in esitiMap[quadrimestre][fascia][settore]:
+					mapPersona = esitiMap[quadrimestre][fascia][settore][idCv]
 					if "NO-CV" not in idCv:
 						res += ("%s\t%s\t%s\t%s\t%s\t%s\t%s\t%s\t%s\t%s\t%s\t%s\t%s\t%s\t%s\t%s\t%s\t%s\t%s\t%s\t%s\t%s\n" % (mapPersona['QUADRIMESTRE'],mapPersona['FASCIA'],mapPersona['SETTORE'],mapPersona['BIBL?'],mapPersona['ID_CV'],mapPersona['COGNOME'],mapPersona['NOME'],mapPersona['NUMERO DOI ESISTENTI'],mapPersona['DOIS ESISTENTI'],mapPersona['DOIS NON ESISTENTI'],mapPersona['I1'],mapPersona['I2'],mapPersona['I3'],mapPersona['SETTORE CONCORSUALE'],mapPersona['SSD'],mapPersona['S1'],mapPersona['S2'],mapPersona['S3'],mapPersona['abilitato'],mapPersona['validitaDal'],mapPersona['validitaAl'], mapPersona["note"]))
 					else:
@@ -345,7 +346,7 @@ def addAsnOutcomesToTsv_risultati(tsvIn, tsvOut, pathAsnDownload):
 			#	tsvDict[quadrimestre][fascia][settore] = list()
 			#tsvDict[quadrimestre][fascia][settore].append(dict(row))
 			tsvDict[quadrimestre][fascia][settore][idCv] = dict(row)
-			
+	
 	print ("Numero idCV nei CV: " + str(len(tsvDictIdCv.keys())))
 	
 	# metto in esitiMap info dove posso risalire ad idCV (i.e. tutto tranne quelli con _soloAbilitati, es. Q:1, F:1, S:08-E1)
@@ -422,23 +423,23 @@ def addAsnOutcomesToTsv_risultati(tsvIn, tsvOut, pathAsnDownload):
 	#print ("Numero idCV rimasti da cercare: " + str(len(tsvDictIdCv.keys())))
 	
 	# SALVO RISULTATI NEL TSV
-	res = "QUADRIMESTRE	FASCIA	SETTORE	BIBL?	ID_CV	COGNOME	NOME	NUMERO DOI ESISTENTI	DOIS ESISTENTI	DOIS NON ESISTENTI	I1	I2	I3	SETTORE CONCORSUALE	SSD	S1	S2	S3	ESITO_SOLOABILITATI	VALIDITA_DAL_SOLOABILITATI	VALIDITA_AL_SOLOABILITATI	NOTE_SOLOABILITATI	ESITO_RISULTATI	VALIDITA_DAL_RISULTATI	VALIDITA_AL_RISULTATI	NOTE_RISULTATI\n"
-	tsvDict[quadrimestre][fascia][settore][idCv] = dict(row)
+	res = "QUADRIMESTRE	FASCIA	SETTORE	BIBL?	ID_CV	COGNOME	NOME	NUMERO DOI ESISTENTI	DOIS ESISTENTI	DOIS NON ESISTENTI	I1	I2	I3	SETTORE CONCORSUALE	SSD	S1	S2	S3	ABILITATO_SOLOABILITATI	VALIDITA_DAL_SOLOABILITATI	VALIDITA_AL_SOLOABILITATI	NOTE_SOLOABILITATI	ABILITATO_RISULTATI	VALIDITA_DAL_RISULTATI	VALIDITA_AL_RISULTATI	NOTE_RISULTATI\n"
 	for quadrimestre in tsvDict:
 		for fascia in tsvDict[quadrimestre]:
 			for settore in tsvDict[quadrimestre][fascia]:
 				for idCv in tsvDict[quadrimestre][fascia][settore]:
-					#print ("idCv: %s - Q: %s, F: %s, S: %s" % (idCv, quadrimestre, fascia, settore))
+					if idCv == "48147":
+						print (tsvDict[quadrimestre][fascia][settore][idCv])
 					if idCv in esitiMap[quadrimestre][fascia][settore]:
 						mapPersona = esitiMap[quadrimestre][fascia][settore][idCv]
 						#print ("TROVATO: " + idCv)
 						#print (mapPersona)
-						res += ("%s\t%s\t%s\t%s\t%s\t%s\t%s\t%s\t%s\t%s\t%s\t%s\t%s\t%s\t%s\t%s\t%s\t%s\t%s\t%s\t%s\t%s\t%s\t%s\t%s\t%s\n" % (mapPersona['QUADRIMESTRE'],mapPersona['FASCIA'],mapPersona['SETTORE'],mapPersona['BIBL?'],mapPersona['ID_CV'],mapPersona['COGNOME'],mapPersona['NOME'],mapPersona['NUMERO DOI ESISTENTI'],mapPersona['DOIS ESISTENTI'],mapPersona['DOIS NON ESISTENTI'],mapPersona['I1'],mapPersona['I2'],mapPersona['I3'],mapPersona['SETTORE CONCORSUALE'],mapPersona['SSD'],mapPersona['S1'],mapPersona['S2'],mapPersona['S3'],mapPersona['ESITO_SOLOABILITATI'],mapPersona['VALIDITA_DAL_SOLOABILITATI'],mapPersona['VALIDITA_AL_SOLOABILITATI'],mapPersona['NOTE_SOLOABILITATI'],mapPersona['abilitato'],mapPersona['validitaDal'],mapPersona['validitaAl'],mapPersona['note']))
+						res += ("%s\t%s\t%s\t%s\t%s\t%s\t%s\t%s\t%s\t%s\t%s\t%s\t%s\t%s\t%s\t%s\t%s\t%s\t%s\t%s\t%s\t%s\t%s\t%s\t%s\t%s\n" % (mapPersona['QUADRIMESTRE'],mapPersona['FASCIA'],mapPersona['SETTORE'],mapPersona['BIBL?'],mapPersona['ID_CV'],mapPersona['COGNOME'],mapPersona['NOME'],mapPersona['NUMERO DOI ESISTENTI'],mapPersona['DOIS ESISTENTI'],mapPersona['DOIS NON ESISTENTI'],mapPersona['I1'],mapPersona['I2'],mapPersona['I3'],mapPersona['SETTORE CONCORSUALE'],mapPersona['SSD'],mapPersona['S1'],mapPersona['S2'],mapPersona['S3'],mapPersona['ABILITATO_SOLOABILITATI'],mapPersona['VALIDITA_DAL_SOLOABILITATI'],mapPersona['VALIDITA_AL_SOLOABILITATI'],mapPersona['NOTE_SOLOABILITATI'],mapPersona['abilitato'],mapPersona['validitaDal'],mapPersona['validitaAl'],mapPersona['note']))
 					else:
 						mapPersona = tsvDict[quadrimestre][fascia][settore][idCv]
-						print ("NON TROVATO: " + idCv)
-						res += ("%s\t%s\t%s\t%s\t%s\t%s\t%s\t%s\t%s\t%s\t%s\t%s\t%s\t%s\t%s\t%s\t%s\t%s\t%s\t%s\t%s\t%s\t\t\t\t\n" % (mapPersona['QUADRIMESTRE'],mapPersona['FASCIA'],mapPersona['SETTORE'],mapPersona['BIBL?'],mapPersona['ID_CV'],mapPersona['COGNOME'],mapPersona['NOME'],mapPersona['NUMERO DOI ESISTENTI'],mapPersona['DOIS ESISTENTI'],mapPersona['DOIS NON ESISTENTI'],mapPersona['I1'],mapPersona['I2'],mapPersona['I3'],mapPersona['SETTORE CONCORSUALE'],mapPersona['SSD'],mapPersona['S1'],mapPersona['S2'],mapPersona['S3'],mapPersona['ESITO_SOLOABILITATI'],mapPersona['VALIDITA_DAL_SOLOABILITATI'],mapPersona['VALIDITA_AL_SOLOABILITATI'],mapPersona['NOTE_SOLOABILITATI']))
-					
+						#print ("NON TROVATO: " + idCv)
+						res += ("%s\t%s\t%s\t%s\t%s\t%s\t%s\t%s\t%s\t%s\t%s\t%s\t%s\t%s\t%s\t%s\t%s\t%s\t%s\t%s\t%s\t%s\t\t\t\t\n" % (mapPersona['QUADRIMESTRE'],mapPersona['FASCIA'],mapPersona['SETTORE'],mapPersona['BIBL?'],mapPersona['ID_CV'],mapPersona['COGNOME'],mapPersona['NOME'],mapPersona['NUMERO DOI ESISTENTI'],mapPersona['DOIS ESISTENTI'],mapPersona['DOIS NON ESISTENTI'],mapPersona['I1'],mapPersona['I2'],mapPersona['I3'],mapPersona['SETTORE CONCORSUALE'],mapPersona['SSD'],mapPersona['S1'],mapPersona['S2'],mapPersona['S3'],mapPersona['ABILITATO_SOLOABILITATI'],mapPersona['VALIDITA_DAL_SOLOABILITATI'],mapPersona['VALIDITA_AL_SOLOABILITATI'],mapPersona['NOTE_SOLOABILITATI']))
+	
 	text_file = open(tsvOut, "w")
 	text_file.write(res)
 	text_file.close()

@@ -9,10 +9,10 @@ import logging
 
 import conf
 
-tsvFN = "../data/input/candidatesAsn2016.tsv"
+tsvFN = "../../data/input/candidatesAsn2016.tsv"
 
-tsvSoglieBilbio = "../data/input/soglie_2016_bibliometrici.tsv"
-tsvSoglieNonBiblio = "../data/input/soglie_2016_non-bibliometrici.tsv"
+tsvSoglieBilbio = "../../data/input/soglie_2016_bibliometrici.tsv"
+tsvSoglieNonBiblio = "../../data/input/soglie_2016_non-bibliometrici.tsv"
 		
 
 def create_connection(db_file):
