@@ -46,9 +46,8 @@ def select_distinctCognomeNome(conn):
 	q = """
 		SELECT DISTINCT cognome, nome
 		FROM cercauniversitaFromExcel
-		"""
-		#LIMIT 10
-		#OFFSET 0"""
+		LIMIT 200
+		OFFSET 0"""
 	cur = conn.cursor()
 	cur.execute(q)
 	rows = cur.fetchall()
@@ -73,26 +72,20 @@ def searchAuthor(firstnames, lastnames, ateneo='', area=''):
 			if len(lastnames) > 1:
 				for lastname in lastnames:
 					temp.append({'fn': [firstname], 'sn': [lastname]})
-		# FPOGI - added 
-		res = list()
-		
 		for curr in temp:
 			data = searchAuthorScopus(curr['fn'], curr['sn'], ateneo, area, 0) #, start)
 			numRes = int(data['search-results']['opensearch:totalResults'])
 			numPerPage = int(data['search-results']['opensearch:itemsPerPage'])
 			numStart = int(data['search-results']['opensearch:startIndex'])
 			if numRes == 1:
-				#return [data]
-				res.append(data)
+				return [data]
 			elif numRes == 0:
 				continue
 			else:
 				if numRes < numPerPage:
-					#return [data]
-					res.append(data)
+					return [data]
 				else:
-					#res = [data]
-					res.append(data)
+					res = [data]
 					while (numStart + numPerPage) < numRes: # and start < numItemLimit:
 						data = searchAuthorScopus(curr['fn'], curr['sn'], ateneo, area, numStart+numPerPage)
 						res.append(data)
@@ -101,12 +94,7 @@ def searchAuthor(firstnames, lastnames, ateneo='', area=''):
 						numStart = int(data['search-results']['opensearch:startIndex'])
 						print ("numRes: %d, numStart: %d, numPerPage: %d" % (numRes, numStart, numPerPage))
 					# TODO JOIN RES
-					#return res
-			#print (len(res))
-		if len(res) > 0:
-			return res
-		else:
-			return None
+					return res
 	else:
 		res = [data]
 		while (numStart + numPerPage) < numRes: #and start < numItemLimit:
@@ -184,31 +172,6 @@ def main():
 	conn = create_connection(conf.dbFilename)
 	
 	missing = list()
-	'''
-1: AUTHFIRST(Corrado) and AUTHLAST(Bartolini) AND AFFIL(Bologna)
-Cognome: Bartolini, Nome: Ilaria
-1: AUTHFIRST(Ilaria) and AUTHLAST(Bartolini) AND AFFIL(Bologna)
-Cognome: Bartolini, Nome: Manuela
-1: AUTHFIRST(Manuela) and AUTHLAST(Bartolini) AND AFFIL(Bologna)
-Cognome: Bartolini, Nome: Monica
-1: AUTHFIRST(Monica) and AUTHLAST(Bartolini) AND AFFIL(Bologna)
-Cognome: Bartolini, Nome: Stefano
-3: AUTHFIRST(Stefano) and AUTHLAST(Bartolini) AND AFFIL(Bologna)
-Cognome: Bartolomei, Nome: Cristiana
-	
-	nome = "Corrado Ilaria Manuela Monica Stefano"	
-	cognome = "Bartolini Piccioni"
-	data = searchAuthor(nome.split(), cognome.split(), "Bologna")
-	print (type(data))
-	print (len(data))
-	print (os.path.join(pathOutput, cognome.replace(" ","-") + '_' + nome.replace(" ","-") + '.json'))
-	if type(data) is list and len(data) > 1:
-		for i in range(0,len(data)):
-			completepath = os.path.join(pathOutput, cognome.replace(" ","-") + '_' + nome.replace(" ","-") + str(i) + '.json')
-			with open(completepath, 'w') as outfile:
-				json.dump(data[i], outfile, indent=3)
-	'''
-
 	with conn:
 		rows = select_distinctCognomeNome(conn)
 		for row in rows:
@@ -223,7 +186,7 @@ Cognome: Bartolomei, Nome: Cristiana
 			if data is not None:
 				if type(data) is list and len(data) > 1:
 					for i in range(0,len(data)):
-						completepath = os.path.join(pathOutput, cognome.replace(" ","-") + '_' + nome.replace(" ","-") + "_" + str(i) + ".json")
+						completepath = os.path.join(pathOutput, cognome.replace(" ","-") + '_' + nome.replace(" ","-") + '.json')
 						with open(completepath, 'w') as outfile:
 							json.dump(data[i], outfile, indent=3)
 				else:
@@ -235,10 +198,12 @@ Cognome: Bartolomei, Nome: Cristiana
 				missing.append([cognome,nome])
 			
 			#sys.exit()
-	
+
 	print ("Missing (i.e. no match found):")
 	for el in missing:
 		print (el)
+	
+	
 	
 
 if __name__ == '__main__':
