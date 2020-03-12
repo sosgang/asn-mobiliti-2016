@@ -65,8 +65,8 @@ def create_sogliaAsn(conn, sogliaAsn):
 	:param sogliaAsn:
 	:return: sogliaAsn id
 	"""
-	sql = ''' INSERT INTO sogliaAsn(annoAsn,settore,descrSettore,ssd,fascia,S1,S2,S3,descrS1,descrS2,descrS3,bibl)
-			  VALUES(?,?,?,?,?,?,?,?,?,?,?,?) '''
+	sql = ''' INSERT INTO sogliaAsn(annoAsn,settore,descrSettore,ssd,fascia,bibliometrico,S1,S2,S3,descrS1,descrS2,descrS3,bibl)
+			  VALUES(?,?,?,?,?,?,?,?,?,?,?,?,?) '''
 	cur = conn.cursor()
 	cur.execute(sql, sogliaAsn)
 	return cur.lastrowid
@@ -116,6 +116,7 @@ def main():
 	with conn:
 		
 		# POPULATE TABLE soglia
+		# BIBLIOMETRICI
 		with open(tsvSoglieBilbio, newline='') as tsvFile:
 			spamreader = csv.DictReader(tsvFile, delimiter='\t')
 			table = list(spamreader)
@@ -132,15 +133,16 @@ def main():
 				s1_l1 = row["Numero articoli 10 anni"]
 				s2_l1 = row["Numero citazioni 15 anni"]
 				s3_l1 = row["Indice H 15 anni"]
-				soglia = ("2016",settore,descrSettore,ssd,"1",s1_l1,s2_l1,s3_l1,"Numero articoli 10 anni","Numero citazioni 15 anni","Indice H 15 anni",1)
+				soglia = ("2016",settore,descrSettore,ssd,"1","Si",s1_l1,s2_l1,s3_l1,"Numero articoli 10 anni","Numero citazioni 15 anni","Indice H 15 anni",1)
 				create_sogliaAsn(conn,soglia)
 
 				s1_l2 = row["Numero articoli 5 anni"]
 				s2_l2 = row["Numero citazioni 10 anni"]
 				s3_l2 = row["Indice H 10 anni"]
-				soglia = ("2016",settore,descrSettore,ssd,"2",s1_l2,s2_l2,s3_l2,"Numero articoli 5 anni","Numero citazioni 10 anni","Indice H 10 anni",1)
+				soglia = ("2016",settore,descrSettore,ssd,"2","Si",s1_l2,s2_l2,s3_l2,"Numero articoli 5 anni","Numero citazioni 10 anni","Indice H 10 anni",1)
 				create_sogliaAsn(conn,soglia)
 
+		# NON BIBLIOMETRICI
 		with open(tsvSoglieNonBiblio, newline='') as tsvFile:
 			spamreader = csv.DictReader(tsvFile, delimiter='\t')
 			table = list(spamreader)
@@ -157,13 +159,13 @@ def main():
 				s1_l1 = row["Numero articoli e contributi 10 anni"]
 				s2_l1 = row["Numero articoli classe A 15 anni"]
 				s3_l1 = row["Numero Libri 15 anni"]
-				soglia = ("2016",settore,descrSettore,ssd,"1",s1_l1,s2_l1,s3_l1,"Numero articoli e contributi 10 anni","Numero articoli classe A 15 anni","Numero Libri 15 anni",0)
+				soglia = ("2016",settore,descrSettore,ssd,"1","No",s1_l1,s2_l1,s3_l1,"Numero articoli e contributi 10 anni","Numero articoli classe A 15 anni","Numero Libri 15 anni",0)
 				create_sogliaAsn(conn,soglia)
 
 				s1_l2 = row["Numero articoli e contributi 5 anni"]
 				s2_l2 = row["Numero articoli classe A 10 anni"]
 				s3_l2 = row["Numero Libri 10 anni"]
-				soglia = ("2016",settore,descrSettore,ssd,"2",s1_l2,s2_l2,s3_l2,"Numero articoli e contributi 5 anni","Numero articoli classe A 10 anni","Numero Libri 10 anni",0)
+				soglia = ("2016",settore,descrSettore,ssd,"2","No",s1_l2,s2_l2,s3_l2,"Numero articoli e contributi 5 anni","Numero articoli classe A 10 anni","Numero Libri 10 anni",0)
 				create_sogliaAsn(conn,soglia)
 		
 		

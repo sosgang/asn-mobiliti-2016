@@ -79,6 +79,7 @@ def main():
 										descrSettore string,
 										ssd text,
 										fascia integer NOT NULL,
+										bibliometrico string NOT NULL,
 										S1 integer,
 										S2 integer,
 										S3 integer,
