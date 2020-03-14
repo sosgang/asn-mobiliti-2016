@@ -53,15 +53,30 @@ def main():
 									); """
 										#authorId integer,
 										#FOREIGN KEY (authorId) REFERENCES authorScopus(id)
-										
+	
+	sql_create_sogliaAsn_table = """ CREATE TABLE IF NOT EXISTS sogliaAsn (
+										id integer PRIMARY KEY AUTOINCREMENT,
+										annoAsn text NOT NULL,
+										settore text NOT NULL,
+										descrSettore string,
+										ssd text,
+										fascia integer NOT NULL,
+										bibliometrico string NOT NULL,
+										S1 integer,
+										S2 integer,
+										S3 integer,
+										descrS1 string NOT NULL,
+										descrS2 string NOT NULL,
+										descrS3 string NOT NULL,
+										bibl integer
+									); """
 	# create a database connection
 	conn = create_connection(conf.dbFilename)
  
 	# create tables
 	if conn is not None:
-		
 		create_table(conn, sql_create_cercauniversitaFromExcel_table)
-		
+		create_table(conn, sql_create_sogliaAsn_table)
 		conn.close()
 	else:
 		print("Error! cannot create the database connection.")
