@@ -18,7 +18,7 @@ import apikeys
 
 apiURL_Search = "https://api.elsevier.com/content/search/scopus"
 pathInput = "../../data/input/cercauniversita/bologna/authors-search/"
-pathOutput = "../../data/input/cercauniversita/bologna/authors-search/"
+pathOutput = "../../data/input/cercauniversita/bologna/publications-list/"
 
 #https://api.elsevier.com/content/search/scopus?apikey=f5f5306cfd6042a38e90dc053d410c56&httpAccept=application/json&query=AU-ID(55303032000)&view=COMPLETE&start=25&count=26
 def getPublicationPage(authorId, start, max_retry=2, retry_delay=1):
@@ -75,7 +75,7 @@ def mergeJson(json1, json2):
 	return json1
 	
 def getPublicationList(authorId):
-	jFilename = outputPath + authorId + ".json"
+	jFilename = pathOutput + authorId + ".json"
 	if os.path.exists(jFilename):
 		# json file already downloaded => return None
 		return None
@@ -89,6 +89,7 @@ def getPublicationList(authorId):
 			numResults = int(j["search-results"]["opensearch:totalResults"])
 			numDownloaded = 25
 			while numDownloaded < numResults:
+				print (authorId)
 				jPart = getPublicationPage(authorId, numDownloaded)
 				j = mergeJson(j, jPart)
 				numDownloaded += 25
@@ -139,14 +140,14 @@ for fileAuthorSearch in contents:
 		jAuthorSearch = json.load(json_file)
 		totRes = int(jAuthorSearch["search-results"]["opensearch:totalResults"])
 		for entry in jAuthorSearch["search-results"]["entry"]:
-			authorId = int(entry["dc:identifier"].replace("AUTHOR_ID:",""))
+			authorId = entry["dc:identifier"].replace("AUTHOR_ID:","")
 			authorIds.add(authorId)
 
 print (len(authorIds))
 
 for authorId in authorIds:
 	j = getPublicationList(authorId)
-	if j is not None and saveJsonPubs(j, authorId, outputPath):
+	if j is not None and saveJsonPubs(j, authorId, pathOutput):
 		print (authorId + ': Saved to file.')
 	else:
 		print (authorId + ': None -> not saved (i.e. not found or json already downloaded).')
