@@ -54,6 +54,7 @@ def select_distinctCognomeNome(conn):
 		SELECT DISTINCT cognome, nome
 		FROM cercauniversitaFromExcel
 		"""
+		#WHERE cognome LIKE 'A%'
 		#LIMIT 10
 		#OFFSET 0"""
 	cur = conn.cursor()
@@ -108,7 +109,7 @@ def getInfoFromJson(filename):
 	return res
 
 def getUrlHomepage(cognome,nome,max_retry=2, retry_delay=1):
-	urlRubricaUnibo = "https://www.unibo.it/uniboweb/unibosearch/rubrica.aspx?mode=people&query=%2bnome%3a" + nome.replace(" ", "+%2bcognome%3a") + "+%2bcognome%3a" + cognome.replace(" ", "+%2bcognome%3a") + "&tab=PersonePanel"
+	urlRubricaUnibo = "https://www.unibo.it/uniboweb/unibosearch/rubrica.aspx?mode=people&query=%2bnome%3a" + nome.replace(" ", "+%2bnome%3a") + "+%2bcognome%3a" + cognome.replace(" ", "+%2bcognome%3a") + "&tab=PersonePanel"
 	return getUrl_toString(urlRubricaUnibo)
 
 def getUrl_toString(url,max_retry=2, retry_delay=1):
@@ -117,7 +118,7 @@ def getUrl_toString(url,max_retry=2, retry_delay=1):
 	cont = True
 	while retry < max_retry and cont:
 		#https://www.unibo.it/uniboweb/unibosearch/rubrica.aspx?mode=people&query=%2bnome%3afabio+%2bcognome%3avitali&tab=PersonePanel
-		print (url)
+		#print (url)
 		
 		#queryEncoded = urllib.parse.quote(query)
 		r = requests.get(url)
@@ -129,7 +130,7 @@ def getUrl_toString(url,max_retry=2, retry_delay=1):
 		#if self.raw_output:
 		#	self.save_raw_response(r.text)
 
-		print (r.status_code)
+		#print (r.status_code)
 
 		if r.status_code > 200 and r.status_code < 500:
 			print(u"{}: errore nella richiesta: {}".format(r.status_code, r.url))
@@ -160,8 +161,7 @@ def saveToFile(filename,text):
 		#outfile.close()
 
 def main():
-	#if not os.path.isdir(pathOutput):
-	#	os.makedirs(pathOutput)
+	'''
 	sql_create_mappingCercauniversitaAuthorId_table = """ CREATE TABLE IF NOT EXISTS mappingCercauniversitaAuthorId (
 										id integer PRIMARY KEY AUTOINCREMENT,
 										cognome text NOT NULL,
@@ -185,9 +185,125 @@ def main():
 	else:
 		print("Error! cannot create the database connection.")
 	
+	'''
 	
-	# LOAD FILE
-	contents = glob(pathHtml + '[A-C]*.html')
+	conn = create_connection(conf.dbFilename)
+	with conn:
+	
+		# DOWNLOAD HOMEPAGE	
+		rows = select_distinctCognomeNome(conn)
+		for row in rows:
+			cognome = row[0]
+			nome = row[1]
+			
+			print ("%s - %s" % (cognome, nome))
+			
+			# DOWNLOAD FILE
+			#if nome == "Giuseppe" and cognome == "Di Modica":
+			#	print (cognome + " - " + nome)
+			
+			htmlFile = os.path.join(pathHtml, cognome.replace(" ","-") + '_' + nome.replace(" ","-") + '.html')
+			
+			# Se non ho ancora scaricato il file
+			if not os.path.isfile(htmlFile):
+				# HOMEPAGE: DOWNLOAD AND SAVE TO FILE
+				htmlText = getUrlHomepage(cognome,nome)
+				urls = list()
+				if "non ha prodotto risultati" in htmlText:
+					print ("\tNessuna homepage trovata per %s - %s" % (cognome,nome))
+					continue
+					#sys.exit()
+				else:
+					# save HTML to file
+					saveToFile(htmlFile,htmlText)
+					print ("\tHomepage scaricata e salvata su file per %s - %s" % (cognome,nome))
+					'''
+					tree = html.document_fromstring(htmlText)
+					tables = tree.xpath("//table[@class='contact vcard']")
+					for table in tables:
+						if len(table.xpath(".//tr[th[text()='web']]")) == 1:
+							vcardEl = table.xpath(".//tr[th[text()='web']]/td[1]/a/text()")
+							urls.append(vcardEl[0])
+						else:
+							print ("PROBLEMA: numero di link web = %d (%s - %s)" % (len(table.xpath(".//tr[th[text()='web']]")),cognome,nome))
+				
+				if len(urls) > 1:
+					print ("Numero di link > 1: %s - %s" % (cognome,nome))
+				
+				filename_regex = os.path.join(pathInput, cognome.replace(" ","-") + '_' + nome.replace(" ","-") + '*') 
+				contents = glob(filename_regex)
+				if len(contents) == 0:
+					create_mappingCercauniversitaAuthorId(conn, (cognome,nome,None,0,None,None,None,None,None,",".join(urls),len(urls)))
+				else:
+					contents.sort()
+					for filename_withPath in contents:
+						path = os.path.dirname(os.path.abspath(filename_withPath))
+						filename = os.path.basename(filename_withPath)
+					
+						jInfos = getInfoFromJson(filename_withPath)
+						for jInfo in jInfos:
+							#if len(urls) > 0:
+							create_mappingCercauniversitaAuthorId(conn, (cognome,nome,jInfo["authorId"],len(contents),jInfo["orcid"],jInfo["documentCount"],jInfo["subjectAreas"],filename,jInfo["query"],",".join(urls),len(urls)))
+					'''
+
+				
+				
+				
+					# PUBLICATION PAGE: DOWNLOAD AND SAVE TO FILE
+					treeHomepage = html.parse(htmlFile)
+					tables = treeHomepage.xpath("//table[@class='contact vcard'][.//tr[th[text()='web']]]")
+					if len(tables) != 1:
+						print ("\tNumero link homepage trovati = %d (!= 1) - %s" % (len(tables),htmlFile))
+			
+					# solo per tabelle in cui c'è link a homepage
+					mapHomepageIdAutore = dict()
+					i = 0
+					for table in tables:
+						i+=1
+						if len(table.xpath(".//tr[th[text()='web']]")) == 1:
+							homepage = table.xpath(".//tr[th[text()='web']]/td[1]/a/text()")[0]
+						else:
+							print ("\tERROR: homepage not found for %s - %s" % (cognome,nome))
+							sys.exit()
+						if len(table.xpath(".//tr[th[@class='uid']]")) == 1:
+							idAutore = int(table.xpath(".//tr/th[@class='uid']/text()")[0])
+						else:
+							print ("\tERROR: idAutore not found for %s - %s" % (cognome,nome))
+							sys.exit()
+						mapHomepageIdAutore[homepage] = {"idAutore": idAutore}
+					#print (mapHomepageIdAutore)
+			
+			
+					for homepage in mapHomepageIdAutore:
+						idAutore = mapHomepageIdAutore[homepage]["idAutore"]
+						publicationsUrl = homepage + "/pubblicazioni"
+						publicationsText = getUrl_toString(publicationsUrl)
+						if publicationsText is None:
+							print ("\tNo publications - skip")
+							continue
+						publicationsFile = os.path.join(pathPublications, str(idAutore) + '_1.html')
+						saveToFile(publicationsFile,publicationsText)
+						
+						treePublications = html.document_fromstring(publicationsText)
+						hrefs = treePublications.xpath("//div[@class='pagination']//a/@href[contains(.,'page=')]")
+						
+						#print ()
+						#print (len(hrefs)) 
+						#print ()
+						if len(hrefs) == 0:
+							continue
+							
+						indexLastPage = int(hrefs[len(hrefs)-1].split("=")[1])
+						for index in range(2,indexLastPage+1):
+							#print (index)
+							publicationsText = getUrl_toString(publicationsUrl + "?page=" + str(index))
+							publicationsFile = os.path.join(pathPublications, str(idAutore) + "_" + str(index) + '.html')
+							saveToFile(publicationsFile,publicationsText)
+						print ("\tPublications page(s) scaricata/e e salvata/e.")
+	
+	'''
+	# DOWNLOAD PUBLICATIONS PAGE
+	contents = glob(pathHtml + '*.html')
 	contents.sort()
 	for htmlFile in contents:
 		#with open(htmlFile,"r") as f:
@@ -217,19 +333,6 @@ def main():
 			else:
 				print ("ERROR: idAutore not found for %s - %s" % (cognome,nome))
 				sys.exit()
-			#if len(table.xpath(".//tr[3]")) == 1:
-			#	try:
-			#		idStruttura = int(table.xpath(".//tr[3]/th/text()")[0])
-			#	except:
-			#		# rettore Francesco Ubertini non ha idStruttura
-			#		idStruttura = 0
-			#		print ("%s - %s" % (cognome,nome))
-			#else:
-			#	print ("ERROR: idStruttura not found for %s - %s" % (cognome,nome))
-			#	sys.exit()
-			
-			#print ("%s - %d - %d" % (homepage, idAutore, idStruttura))
-			#mapHomepageIdAutore[homepage] = {"idAutore": idAutore, "idStruttura": idStruttura}
 			mapHomepageIdAutore[homepage] = {"idAutore": idAutore}
 		print (mapHomepageIdAutore)
 		
@@ -246,8 +349,6 @@ def main():
 			
 			treePublications = html.document_fromstring(publicationsText)
 			hrefs = treePublications.xpath("//div[@class='pagination']//a/@href[contains(.,'page=')]")
-			#for href in hrefs:
-			#	print (href.split("=")[1])
 			
 			print ()
 			print (len(hrefs)) 
@@ -261,70 +362,7 @@ def main():
 				publicationsText = getUrl_toString(publicationsUrl + "?page=" + str(index))
 				publicationsFile = os.path.join(pathPublications, str(idAutore) + "_" + str(index) + '.html')
 				saveToFile(publicationsFile,publicationsText)
-			
-			#i = 2
-			#temp = ""
-			#while temp != None:
-			#	temp = getUrl_toString(publicationsUrl + "?page=" + str(i))
-			#	if temp != None:
-			#		publicationsFile = os.path.join(pathPublications, str(idAutore) + "_" + str(i) + '.html')
-			#		saveToFile(publicationsFile,temp)
-			#	i+=1
-			
-			#treePublications.xpath("[@class='report-list']")
-		
-	'''
-	conn = create_connection(conf.dbFilename)
-	with conn:
-		
-		rows = select_distinctCognomeNome(conn)
-		for row in rows:
-			cognome = row[0]
-			nome = row[1]
-			
-			# DOWNLOAD FILE
-			if nome == "Giuseppe" and cognome == "Di Modica":
-				print (cognome + " - " + nome)
-		
-			htmlText = getUrlHomepage(cognome,nome)
-			
-			urls = list()
-			if "non ha prodotto risultati" in htmlText:
-				print ("Nessun risultato per %s - %s" % (cognome,nome))
-				#sys.exit()
-			else:
-				# save HTML to file
-				htmlFile = os.path.join(pathHtml, cognome.replace(" ","-") + '_' + nome.replace(" ","-") + '.html')
-				saveToFile(htmlFile,htmlText)
-				
-				tree = html.document_fromstring(htmlText)
-				tables = tree.xpath("//table[@class='contact vcard']")
-				for table in tables:
-					if len(table.xpath(".//tr[th[text()='web']]")) == 1:
-						vcardEl = table.xpath(".//tr[th[text()='web']]/td[1]/a/text()")
-						urls.append(vcardEl[0])
-					else:
-						print ("PROBLEMA: numero di link web = %d (%s - %s)" % (len(table.xpath(".//tr[th[text()='web']]")),cognome,nome))
-			
-			if len(urls) > 1:
-				print ("Numero di link > 1: %s - %s" % (cognome,nome))
-			
-			filename_regex = os.path.join(pathInput, cognome.replace(" ","-") + '_' + nome.replace(" ","-") + '*') 
-			contents = glob(filename_regex)
-			if len(contents) == 0:
-				create_mappingCercauniversitaAuthorId(conn, (cognome,nome,None,0,None,None,None,None,None,",".join(urls),len(urls)))
-			else:
-				contents.sort()
-				for filename_withPath in contents:
-					path = os.path.dirname(os.path.abspath(filename_withPath))
-					filename = os.path.basename(filename_withPath)
-				
-					jInfos = getInfoFromJson(filename_withPath)
-					for jInfo in jInfos:
-						#if len(urls) > 0:
-						create_mappingCercauniversitaAuthorId(conn, (cognome,nome,jInfo["authorId"],len(contents),jInfo["orcid"],jInfo["documentCount"],jInfo["subjectAreas"],filename,jInfo["query"],",".join(urls),len(urls)))
-	'''
-
+	'''	
 if __name__ == '__main__':
 	main()
 
