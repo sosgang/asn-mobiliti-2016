@@ -197,7 +197,7 @@ def main():
 					doi = None
 				print ("EID: %s - DOI: %s" % (eid,doi))
 				
-				create_eidDoi(conn,(eid,Doi))
+				create_eidDoi(conn,(eid,doi))
 				eidDoiMap[eid] = doi
 				if doi is not None:
 					doiEidMap[doi] = eid
