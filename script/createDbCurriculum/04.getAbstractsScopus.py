@@ -81,20 +81,18 @@ def populateDbEidDoi(dbFilename,path):
 									  ); """
 	
 	# create a database connection
-	conn = create_connection(conf.dbFilename)
+	conn = create_connection(dbFilename)
  
 	# create tables
 	if conn is not None:
-		
 		create_table(conn, sql_create_eidDoi_table)
-		
 		conn.close()
 	else:
 		print("Error! cannot create the database connection.")
 	
 	
 	# populate table eidDoi
-	conn = create_connection(conf.dbFilename)
+	conn = create_connection(dbFilename)
 	with conn:
 		contents = glob(path + "*.json")
 		contents.sort()
@@ -115,7 +113,23 @@ def populateDbEidDoi(dbFilename,path):
 				create_eidDoi(conn,(eid,doi))
 
 
-def computeAndSave_authorDoisMapping_listaDoisToDownload(fileMapping,fileLista,numDoisForeachCandidate=5):
+def select_doiEidMap(dbFile):
+	q = """
+		SELECT DISTINCT eid,doi
+		FROM eidDoi
+		ORDER BY eid
+		"""
+	
+	# create a database connection
+	conn = create_connection(dbFile)
+	with conn:
+		cur = conn.cursor()
+		cur.execute(q)
+		rows = cur.fetchall()
+	return rows
+
+
+def computeAndSave_authorDoisMapping_listaDoisToDownload(tsv,fileMapping,fileLista,numDoisForeachCandidate=5):
 	dois = set()
 	authorDois = dict()
 	doisCounter = defaultdict(int)
@@ -123,16 +137,22 @@ def computeAndSave_authorDoisMapping_listaDoisToDownload(fileMapping,fileLista,n
 	# OUTPUT
 	authorDoisMapping = dict()
 
-	with open(tsvFN, newline='') as tsvFile:
+	with open(tsv, newline='') as tsvFile:
 		spamreader = csv.DictReader(tsvFile, delimiter='\t')
 		table = list(spamreader)
 		for row in table:
 			idCv = row["ID_CV"]
-			doisCandidate = ast.literal_eval(row["DOIS ESISTENTI"])
-			
+			if "NO-CV-" in idCv:
+				doisCandidate = []
+			else:
+				doisCandidate = ast.literal_eval(row["DOIS ESISTENTI"])
+
 			authorDoisMapping[idCv] = list()
 			
 			dois.update(doisCandidate)
+			if idCv in authorDois:
+				print ("PROBLEMA: idCv è già stato trovato - %s" % idCv)
+				print (row)
 			authorDois[idCv] = doisCandidate
 			
 			for doi in doisCandidate:
@@ -187,29 +207,109 @@ def load__listaDoisToDownload(fileLista):
 
 
 
-
-#computeAndSave_authorDoisMapping_listaDoisToDownload(fileAuthorDoisMapping,fileListaDoisToDownload,5)
-authorDoisMapping = load_authorDoisMapping(fileAuthorDoisMapping)
-listaDoisToDownload = load__listaDoisToDownload(fileListaDoisToDownload)
-
-#populateDbEidDoi(conf.dbFilename,pathAbstracts)
-
+# COMPUTE
+computeAndSave_authorDoisMapping_listaDoisToDownload(tsvFN,fileAuthorDoisMapping,fileListaDoisToDownload,5)
+# LOAD
+#authorDoisMapping = load_authorDoisMapping(fileAuthorDoisMapping)
+#listaDoisToDownload = load__listaDoisToDownload(fileListaDoisToDownload)
 
 
-	
-	
-	
-	
-	
-	
+
+# COMPUTE
+populateDbEidDoi(conf.dbFilename,pathAbstracts)
+# LOAD (REQ: COMPUTE -> db updated)
 eidDoiMap = dict()
 doiEidMap = dict()
+rows = select_doiEidMap(conf.dbFilename)
+for row in rows:
+	eid = row[0]
+	doi = row[1]
+	#print ("EID: %s - DOI: %s" % (eid,doi))
+	eidDoiMap[eid] = doi
+	if doi is not None:
+		doiEidMap[doi] = eid
+
+
+
+# FILTER CVs TO MANAGE
+settoriToInclude = ["01-A1"]
+
+idsCvToConsider = set()
+with open(tsvFN, newline='') as tsvFile:
+		spamreader = csv.DictReader(tsvFile, delimiter='\t')
+		table = list(spamreader)
+		for row in table:
+			#quadrimestre = row["QUADRIMESTRE"]
+			#fascia = row["FASCIA"]
+			settore = row["SETTORE"]
+			for settoreToInclude in settoriToInclude:
+				if settoreToInclude not in settore:
+					pass
+				else:
+					idCv = row["ID_CV"]
+					idsCvToConsider.add(idCv)
+print ("Numero CV da gestire: %d" % len(idsCvToConsider))
+
+
+# FILTER DOIs TO DOWNLOAD
+doisDownloaded_subset = set()
+doisToDownload_subset = set()
+for idCv in idsCvToConsider:
+	dois = authorDoisMapping[idCv]
+	for doi in dois:
+		if doi in doiEidMap:
+			doisDownloaded_subset.add(doi)
+		else:
+			doisToDownload_subset.add(doi)
+print ("Numero DOI già scaricati: %s" % len(doisDownloaded_subset))
+print ("Numero DOI da scaricare: %s" % len(doisToDownload_subset))
+
+
+# DOWNLOAD FILTERED DOIs 
+conn = create_connection(dbFilename)
+with conn:
+	for doi in doisToDownload_subset:
+		print ('Processing ' + doi)
+		jsonAbs = mylib.getAbstract(doi, 'DOI', apikeys.keys)
+		if jsonAbs is not None:
+			mylib.saveJsonAbstract(jsonAbs,pathAbstracts)
+			print ('\tSaved to file.')
+			
+			try:
+				eid = jsonAbs["abstracts-retrieval-response"]["coredata"]["eid"]
+			except:
+				print ("ERROR: NO EID - EXIT")
+				sys.exit()
+			create_eidDoi(conn,(eid,doi))
+			eidDoiMap[eid] = doi
+			doiEidMap[doi] = eid
+		else:
+			print ('\tNone -> not saved.')
+
 	
-	
-eidDoiMap[eid] = doi
-if doi is not None:
-	doiEidMap[doi] = eid
-	
+'''
+i = 1
+numDoisDownloaded = 0
+doisDownloaded = set()
+for authorId in authorDoisMapping:
+	authorDois = authorDoisMapping[authorId]
+	for authorDoi in authorDois:
+		if authorDoi in doiEidMap:
+			numDoisDownloaded += 1
+			doisDownloaded.add(authorDoi)
+
+print ("Totale DOI da scaricare: %d" % len(listaDoisToDownload))
+print ("DOI già scaricati %d" % numDoisDownloaded)
+
+numDoisDownloaded_2 = 0
+for doi in listaDoisToDownload:
+	if doi in doiEidMap:
+		numDoisDownloaded_2 += 1
+		
+print ("DOI già scaricati (metodo 2) %d" % numDoisDownloaded_2)
+#print (len(doisDownloaded))
+'''
+
 #def main():
 #	...
 #
