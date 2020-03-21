@@ -225,7 +225,8 @@ def main():
 					authors = None
 					#print ("%s - %s" % (authors, title))
 				if authors is not None:
-					pubblicazioneTuple = (idAutore,text,authors,title)
+					# FPOGGI: ho messo titolo minuscolo
+					pubblicazioneTuple = (idAutore,text,authors,title.lower())
 					create_pubblicazioneUniBo(conn,pubblicazioneTuple)
 
 	print (counterHtmlFiles)

@@ -73,7 +73,48 @@ def create_eidDoi(conn, eidDoi):
 	cur.execute(sql, eidDoi)
 	return cur.lastrowid
 
+
+def populateDbEidDoi(dbFilename,path):
+	sql_create_eidDoi_table = """ CREATE TABLE IF NOT EXISTS eidDoi (
+										eid text NOT NULL,
+										doi text
+									  ); """
 	
+	# create a database connection
+	conn = create_connection(conf.dbFilename)
+ 
+	# create tables
+	if conn is not None:
+		
+		create_table(conn, sql_create_eidDoi_table)
+		
+		conn.close()
+	else:
+		print("Error! cannot create the database connection.")
+	
+	
+	# populate table eidDoi
+	conn = create_connection(conf.dbFilename)
+	with conn:
+		contents = glob(path + "*.json")
+		contents.sort()
+		for filename_withPath in contents:
+			with open(filename_withPath) as json_file:
+				data = json.load(json_file)
+				try:
+					eid = data["abstracts-retrieval-response"]["coredata"]["eid"]
+				except:
+					print ("ERROR: NO EID - EXIT")
+					sys.exit()
+				try:
+					doi = data["abstracts-retrieval-response"]["coredata"]["prism:doi"]
+				except:
+					doi = None
+				print ("EID: %s - DOI: %s" % (eid,doi))
+				
+				create_eidDoi(conn,(eid,doi))
+
+
 def computeAndSave_authorDoisMapping_listaDoisToDownload(fileMapping,fileLista,numDoisForeachCandidate=5):
 	dois = set()
 	authorDois = dict()
@@ -151,59 +192,29 @@ def load__listaDoisToDownload(fileLista):
 authorDoisMapping = load_authorDoisMapping(fileAuthorDoisMapping)
 listaDoisToDownload = load__listaDoisToDownload(fileListaDoisToDownload)
 
+#populateDbEidDoi(conf.dbFilename,pathAbstracts)
 
 
 
-def main():
-	
-	sql_create_eidDoi_table = """ CREATE TABLE IF NOT EXISTS eidDoi (
-										eid text NOT NULL,
-										doi text
-									  ); """
-	
-	# create a database connection
-	conn = create_connection(conf.dbFilename)
- 
-	# create tables
-	if conn is not None:
-		
-		create_table(conn, sql_create_eidDoi_table)
-		
-		conn.close()
-	else:
-		print("Error! cannot create the database connection.")
 	
 	
 	
 	
-	eidDoiMap = dict()
-	doiEidMap = dict()
 	
-	conn = create_connection(conf.dbFilename)
-	with conn:
-		contents = glob(pathAbstracts + "*.json")
-		contents.sort()
-		for filename_withPath in contents:
-			with open(filename_withPath) as json_file:
-				data = json.load(json_file)
-				try:
-					eid = data["abstracts-retrieval-response"]["coredata"]["eid"]
-				except:
-					print ("ERROR: NO EID - EXIT")
-					sys.exit()
-				try:
-					doi = data["abstracts-retrieval-response"]["coredata"]["prism:doi"]
-				except:
-					doi = None
-				print ("EID: %s - DOI: %s" % (eid,doi))
-				
-				create_eidDoi(conn,(eid,doi))
-				eidDoiMap[eid] = doi
-				if doi is not None:
-					doiEidMap[doi] = eid
-				
-if __name__ == '__main__':
-	main()
+	
+eidDoiMap = dict()
+doiEidMap = dict()
+	
+	
+eidDoiMap[eid] = doi
+if doi is not None:
+	doiEidMap[doi] = eid
+	
+#def main():
+#	...
+#
+#if __name__ == '__main__':
+#	main()
 
 
 

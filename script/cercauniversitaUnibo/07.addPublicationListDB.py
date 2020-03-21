@@ -172,7 +172,8 @@ def main():
 					except:
 						doi = None
 					try:
-						title = entry["dc:title"]
+						# FPOGGI: ho messo titolo minuscolo
+						title = entry["dc:title"].lower()
 					except:
 						title = None
 					try:

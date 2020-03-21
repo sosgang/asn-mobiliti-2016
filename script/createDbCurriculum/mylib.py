@@ -13,7 +13,81 @@ import json
 import urllib.parse
 
 
+apiURL_Abstract = {
+	'doi': 'https://api.elsevier.com/content/abstract/doi/',
+	'eid': 'https://api.elsevier.com/content/abstract/eid/'
+}
 
+#'https://api.elsevier.com/content/abstract/scopus_id/0032717048?apikey=5953888c807d52ee017df48501d3e598&httpAccept=application/json&view=FULL'
+def getAbstract(doi, doiOrEid, apikeys, max_retry=2, retry_delay=1):
+	
+	retry = 0
+	cont = True
+	while retry < max_retry and cont:
+
+		if doiOrEid.lower() not in ['doi','eid']:
+			print ("ERROR in mylib.getAbstract(): allowed type of search are 'DOI' and 'EID'.")
+
+		params = {'apikey':apikeys[0], 'httpAccept':'application/json'} #, 'view':'FULL'}
+		doiEncoded = urllib.parse.quote(doi)
+		#print(apiURL_AbstractDoi + urllib.parse.quote(doi))
+		r = requests.get(apiURL_Abstract[doiOrEid.lower()] + doiEncoded, params=params)
+				
+		#if self.raw_output:
+		#	self.save_raw_response(r.text)
+
+		# quota exceeded -> http 429 (see https://dev.elsevier.com/api_key_settings.html)
+		if r.status_code == 429:
+			print ("Quota exceeded for key " + apikeys.keys[0] + " - EXIT.")
+			apikeys.keys.pop(0)
+		
+		elif r.status_code > 200 and r.status_code < 500:
+			print(u"{}: errore nella richiesta: {}".format(r.status_code, r.url))
+			return None
+
+		if r.status_code != 200:
+			retry += 1
+			if retry < max_retry:
+				time.sleep(retry_delay)
+			continue
+
+		cont = False 
+			 
+	if retry >= max_retry: 
+		return None 
+ 
+	json = r.json() 
+	json['request-time'] = str(datetime.datetime.now().utcnow())
+	# TO DECODE:
+	#oDate = datetime.datetime.strptime(json['request-time'], '%Y-%m-%d %H:%M:%S.%f')
+	return json
+
+
+##### TODO ##### TODO ##### TODO ##### TODO ##### TODO #####
+# controlla che json dell'abstract ritornato da api sia ok
+##### TODO ##### TODO ##### TODO ##### TODO ##### TODO #####
+def checkAbsFormat(j):
+	return True
+
+# Salvo usando eid come nome
+def saveJsonAbstract(j, pathOutput):
+
+	if (checkAbsFormat(j)):
+		eid = j['abstracts-retrieval-response']['coredata']['eid']
+		
+		if not os.path.isdir(pathOutput):
+			os.makedirs(pathOutput)
+			
+		counter = 1
+		completepath = os.path.join(pathOutput, eid + '.json')
+
+		with open(completepath, 'w') as outfile:
+			json.dump(j, outfile, indent=3)
+		
+		return True
+
+	else:
+		return False
 
 
 # Get authors' names and surnames from the cv PDFs

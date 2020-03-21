@@ -38,14 +38,16 @@ def create_connection(db_file):
 
 def select_distinctCognomeNome(conn):
 	q = """
-		SELECT DISTINCT id,cognome, nome
+		SELECT DISTINCT id,cognome,nome
 		FROM cercauniversitaFromExcel
 		WHERE anno=2019
 		ORDER BY cognome, nome
 		"""
+		#'Perez Vazquez'
 		# %Albanes
 		# WHERE anno=2019 AND cognome LIKE 'A%' 
 		# WHERE anno=2019 AND cognome LIKE '%Angelin%' AND nome='Giovanni'
+	AND cognome <> 'Perez Vazquez' AND cognome <> 'Martin' AND nome <> 'Sanna Maria'
 	cur = conn.cursor()
 	cur.execute(q)
 	rows = cur.fetchall()
@@ -53,17 +55,6 @@ def select_distinctCognomeNome(conn):
 
 
 def select_publicationTitle(conn,authorId):
-	'''
-	q = """
-		SELECT title,authorId
-		FROM wroteRelation
-		INNER JOIN publication
-		ON
-		  wroteRelation.eid=publication.eid
-		WHERE wroteRelation.authorId='{auid}'
-		"""
-	'''
-	
 	q = """
 		SELECT DISTINCT title
 		FROM wroteRelation
@@ -90,7 +81,7 @@ def create_table(conn, create_table_sql):
 	"""
 	try:
 		c = conn.cursor()
-		c.execute("DROP TABLE mapping;")
+		c.execute("DROP TABLE IF EXISTS mapping;")
 		c = conn.cursor()
 		c.execute(create_table_sql)
 	except Error as e:
@@ -141,6 +132,15 @@ def getInfoFromJson(filename):
 				res.append({"authorId": authorId, "orcid": orcid, "documentCount": documentCount, "subjectAreas": subjectAreas,"query":query})
 	return res
 
+# Escludo persone che hanno tantissime (1000+) risultati in authorSearch Scopus -> Vanno gestiti a mano
+def isToExclude(cognome,nome):
+	if cognome == 'Perez Vazquez' and nome == 'Maria Enriqueta':
+		return True
+	elif cognome == 'Martin' and nome == 'Sanna Maria':
+		return True
+	else:
+		return False
+
 def main():
 	sql_create_mapping_table = """ CREATE TABLE IF NOT EXISTS mapping (
 										idCercauniversita integer NOT NULL,
@@ -176,8 +176,57 @@ def main():
 			nome = row[2]
 			#print ("%s) %s - %s" % (idCercauni, cognome, nome))
 			
+			authorIds = set()
 			filename_regex = os.path.join(pathAuthorsSearch, cognome.replace(" ","-") + '_' + nome.replace(" ","-") + '*') 
 			contents = glob(filename_regex)
+			
+			contents.sort()
+			for filename_withPath in contents:
+				#path = os.path.dirname(os.path.abspath(filename_withPath))
+				#filename = os.path.basename(filename_withPath)
+				jInfos = getInfoFromJson(filename_withPath)	
+				for jInfo in jInfos:
+					authorIds.add(jInfo["authorId"])
+			
+			#print ("len(authorIds) = %s" % len(authorIds))
+			
+			# Escludo persone che hanno tantissime (1000+) risultati in authorSearch Scopus -> Vanno gestiti a mano
+			if isToExclude(cognome,nome):
+				mappingTuple = (idCercauni,None,cognome,nome,0,0,len(authorIds)) #idCercauniversita,authorId,cognome,nome,numMatches
+				create_mapping(conn, mappingTuple)
+				continue
+			
+			if len(authorIds) == 0:
+				mappingTuple = (idCercauni,None,cognome,nome,0,0,len(authorIds)) #idCercauniversita,authorId,cognome,nome,numMatches
+				create_mapping(conn, mappingTuple)
+				pass
+			else:
+				authorIdsFound = list()
+				numRowsFound = list()
+				for authorId in authorIds:
+					#print ("Managing authorId %s" % authorId)
+					rowsPubs = select_publicationTitle(conn,authorId)
+					if len(rowsPubs) > 0:
+						authorIdsFound.append(authorId)
+						numRowsFound.append(len(rowsPubs))
+			
+				# POPULATE DB
+				if len(authorIdsFound) != 0:
+					for i in range(0,len(authorIdsFound)):
+						mappingTuple = (idCercauni,authorIdsFound[i],cognome,nome,len(authorIdsFound),numRowsFound[i],len(authorIds)) #idCercauniversita,authorId,cognome,nome,numMatches
+						create_mapping(conn, mappingTuple)
+				else:
+					mappingTuple = (idCercauni,None,cognome,nome,len(authorIdsFound),0,len(authorIds)) #idCercauniversita,authorId,cognome,nome,numMatches
+					create_mapping(conn, mappingTuple)
+				
+				# PRINT
+				if len(authorIdsFound) == 1:
+					print ("OK: ONE MATCH: %s - %s -> %s" % (cognome, nome,authorId))
+					counterOneMatch += 1
+				elif len(authorIdsFound) > 1:
+					print ("ERROR: 2+ matches: %s - %s -> %s" % (cognome, nome,authorId))
+			
+			'''
 			if len(contents) == 0:
 				#create_mappingCercauniversitaAuthorId(conn, (cognome,nome,None,0,None,None,None,None,None,",".join(urls),len(urls)))
 				#print ("QUI")
@@ -224,7 +273,7 @@ def main():
 						counterOneMatch += 1
 					elif len(authorIdsFound) > 1:
 						print ("ERROR: 2+ matches: %s - %s -> %s" % (cognome, nome,jInfo["authorId"]))
-					
+			'''		
 					
 									
 		print (len(rows))
