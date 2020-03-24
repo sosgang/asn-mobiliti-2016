@@ -1,5 +1,6 @@
 # -*- coding: UTF-8 -*-
 import datetime
+import time
 import requests
 import csv
 import ast
@@ -38,8 +39,8 @@ def getAbstract(doi, doiOrEid, apikeys, max_retry=2, retry_delay=1):
 
 		# quota exceeded -> http 429 (see https://dev.elsevier.com/api_key_settings.html)
 		if r.status_code == 429:
-			print ("Quota exceeded for key " + apikeys.keys[0] + " - EXIT.")
-			apikeys.keys.pop(0)
+			print ("Quota exceeded for key " + apikeys[0] + " - EXIT.")
+			apikeys.pop(0)
 		
 		elif r.status_code > 200 and r.status_code < 500:
 			print(u"{}: errore nella richiesta: {}".format(r.status_code, r.url))

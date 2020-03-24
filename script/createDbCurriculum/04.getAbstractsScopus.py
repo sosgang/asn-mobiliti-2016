@@ -108,7 +108,7 @@ def populateDbEidDoi(dbFilename,path):
 					doi = data["abstracts-retrieval-response"]["coredata"]["prism:doi"]
 				except:
 					doi = None
-				print ("EID: %s - DOI: %s" % (eid,doi))
+				#print ("EID: %s - DOI: %s" % (eid,doi))
 				
 				create_eidDoi(conn,(eid,doi))
 
@@ -208,15 +208,15 @@ def load__listaDoisToDownload(fileLista):
 
 
 # COMPUTE
-computeAndSave_authorDoisMapping_listaDoisToDownload(tsvFN,fileAuthorDoisMapping,fileListaDoisToDownload,5)
+#computeAndSave_authorDoisMapping_listaDoisToDownload(tsvFN,fileAuthorDoisMapping,fileListaDoisToDownload,5)
 # LOAD
-#authorDoisMapping = load_authorDoisMapping(fileAuthorDoisMapping)
-#listaDoisToDownload = load__listaDoisToDownload(fileListaDoisToDownload)
+authorDoisMapping = load_authorDoisMapping(fileAuthorDoisMapping)
+listaDoisToDownload = load__listaDoisToDownload(fileListaDoisToDownload)
 
 
 
 # COMPUTE
-populateDbEidDoi(conf.dbFilename,pathAbstracts)
+#populateDbEidDoi(conf.dbFilename,pathAbstracts)
 # LOAD (REQ: COMPUTE -> db updated)
 eidDoiMap = dict()
 doiEidMap = dict()
@@ -232,22 +232,23 @@ for row in rows:
 
 
 # FILTER CVs TO MANAGE
-settoriToInclude = ["01-A1"]
+#settoriToInclude = ["01","02","03","04","05","06","07","09"]
+settoriToInclude = ["10","11","12","13","14"]
 
 idsCvToConsider = set()
 with open(tsvFN, newline='') as tsvFile:
-		spamreader = csv.DictReader(tsvFile, delimiter='\t')
-		table = list(spamreader)
-		for row in table:
-			#quadrimestre = row["QUADRIMESTRE"]
-			#fascia = row["FASCIA"]
-			settore = row["SETTORE"]
-			for settoreToInclude in settoriToInclude:
-				if settoreToInclude not in settore:
-					pass
-				else:
-					idCv = row["ID_CV"]
-					idsCvToConsider.add(idCv)
+	spamreader = csv.DictReader(tsvFile, delimiter='\t')
+	table = list(spamreader)
+	for row in table:
+		#quadrimestre = row["QUADRIMESTRE"]
+		#fascia = row["FASCIA"]
+		settore = row["SETTORE"]
+		for settoreToInclude in settoriToInclude:
+			if settoreToInclude not in settore:
+				pass
+			else:
+				idCv = row["ID_CV"]
+				idsCvToConsider.add(idCv)
 print ("Numero CV da gestire: %d" % len(idsCvToConsider))
 
 
@@ -266,9 +267,9 @@ print ("Numero DOI da scaricare: %s" % len(doisToDownload_subset))
 
 
 # DOWNLOAD FILTERED DOIs 
-conn = create_connection(dbFilename)
-with conn:
-	for doi in doisToDownload_subset:
+for doi in doisToDownload_subset:
+	conn = create_connection(conf.dbFilename)
+	with conn:
 		print ('Processing ' + doi)
 		jsonAbs = mylib.getAbstract(doi, 'DOI', apikeys.keys)
 		if jsonAbs is not None:
