@@ -8,6 +8,7 @@ import os
 import logging
 
 import conf
+import mylib
 
 tsvFN = "../../data/input/candidatesAsn2016.tsv"
 
@@ -15,21 +16,6 @@ tsvSoglieBilbio = "../../data/input/soglie_2016_bibliometrici.tsv"
 tsvSoglieNonBiblio = "../../data/input/soglie_2016_non-bibliometrici.tsv"
 		
 
-def create_connection(db_file):
-	""" create a database connection to the SQLite database
-		specified by db_file
-	:param db_file: database file
-	:return: Connection object or None
-	"""
-	conn = None
-	try:
-		conn = sqlite3.connect(db_file)
-		return conn
-	except Error as e:
-		print(e)
- 
-	return conn
-	
 def create_curriculum(conn, curriculum):
 	"""
 	Create a new cv into the curriculum table
@@ -112,7 +98,7 @@ def select_sogliaAsn(conn,fasc,sett,year):
 	
 def main():
 	# create a database connection
-	conn = create_connection(conf.dbFilename)
+	conn = mylib.create_connection(conf.dbFilename)
 	with conn:
 		
 		# POPULATE TABLE soglia

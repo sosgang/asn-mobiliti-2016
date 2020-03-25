@@ -12,7 +12,8 @@ from lxml import html
 import os
 import json
 import urllib.parse
-
+import sqlite3
+from sqlite3 import Error
 
 apiURL_Abstract = {
 	'doi': 'https://api.elsevier.com/content/abstract/doi/',
@@ -520,8 +521,135 @@ def addAsnOutcomesToTsv_risultati(tsvIn, tsvOut, pathAsnDownload):
 	text_file.close()
 
 
+def create_connection(db_file):
+	""" create a database connection to the SQLite database
+		specified by db_file
+	:param db_file: database file
+	:return: Connection object or None
+	"""
+	conn = None
+	try:
+		conn = sqlite3.connect(db_file)
+		return conn
+	except Error as e:
+		print(e)
+ 
+	return conn
 
 
+def create_table(conn, create_table_sql):
+	""" create a table from the create_table_sql statement
+	:param conn: Connection object
+	:param create_table_sql: a CREATE TABLE statement
+	:return:
+	"""
+	try:
+		c = conn.cursor()
+		c.execute(create_table_sql)
+	except Error as e:
+		print(e)
+
+
+def create_matchSurnameName(conn, matchSurnameName):
+	"""
+	Create a new record into the matchSurnameName table
+	:param conn:
+	:param record:
+	:return: matchSurnameName id
+	"""
+	sql = ''' INSERT INTO matchSurnameName(cvId,auid)
+			  VALUES(?,?) '''
+	cur = conn.cursor()
+	cur.execute(sql, matchSurnameName)
+	return cur.lastrowid
+
+
+def create_matchSurname(conn, matchSurname):
+	"""
+	Create a new record into the matchSurname table
+	:param conn:
+	:param record:
+	:return: matchSurname id
+	"""
+	sql = ''' INSERT INTO matchSurname(cvId,auid)
+			  VALUES(?,?) '''
+	cur = conn.cursor()
+	cur.execute(sql, matchSurname)
+	return cur.lastrowid
+
+
+def create_matchIntersection(conn, matchIntersection):
+	"""
+	Create a new record into the matchIntersection table
+	:param conn:
+	:param record:
+	:return: matchIntersection id
+	"""
+	sql = ''' INSERT INTO matchIntersection(cvId,auid)
+			  VALUES(?,?) '''
+	cur = conn.cursor()
+	cur.execute(sql, matchIntersection)
+	return cur.lastrowid
+
+
+def create_matchNoDois(conn, matchNoDois):
+	"""
+	Create a new record into the matchNoDois table
+	:param conn:
+	:param record:
+	:return: matchNoDois id
+	"""
+	sql = ''' INSERT INTO matchNoDois(cvId,auid)
+			  VALUES(?,?) '''
+	cur = conn.cursor()
+	cur.execute(sql, matchNoDois)
+	return cur.lastrowid
+
+
+def select_match_caseInsensitive(conn,eid,surname,firstname):
+	q = """
+		SELECT scopusAuthor.auid AS auid
+		FROM scopusPublication
+		INNER JOIN wroteRelation
+		ON
+		  scopusPublication.eid = wroteRelation.eid
+		INNER JOIN scopusAuthor
+		ON
+		  wroteRelation.auid = scopusAuthor.auid
+		WHERE scopusPublication.eid = '{electronicId}'
+		"""
+	if surname is not None:
+		q += ' AND lower(scopusAuthor.surname) = "' + surname.lower() + '"'
+	if firstname is not None:
+		q += ' AND lower(scopusAuthor.firstname) = "' + firstname.lower() + '"'
+	
+	cur = conn.cursor()
+	cur.execute(q.format(electronicId=eid))
+	rows = cur.fetchall()
+	return rows
+
+
+def select_doiEidMap(dbFile):
+	q = """
+		SELECT DISTINCT eid,doi
+		FROM eidDoi
+		ORDER BY eid
+		"""
+	
+	# create a database connection
+	conn = create_connection(dbFile)
+	with conn:
+		cur = conn.cursor()
+		cur.execute(q)
+		rows = cur.fetchall()
+	return rows
+
+
+#def load_authorDoisMapping(fileMapping):
+def loadJson(fileMapping):
+	with open(fileMapping, "r") as read_file:
+		data = json.load(read_file)
+		return data
 
 '''
 def addAsnOutcomesToTsv(tsvIn, tsvOut, pathAsnDownload):

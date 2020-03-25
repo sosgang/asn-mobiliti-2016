@@ -26,40 +26,6 @@ fileListaDoisToDownload = "../../data/input/04.doisToDownload-list.txt"
 pathAbstracts = "../../data/output/abstracts/"
 
 
-import sqlite3
-from sqlite3 import Error
-
-import conf
- 
-def create_connection(db_file):
-	""" create a database connection to the SQLite database
-		specified by db_file
-	:param db_file: database file
-	:return: Connection object or None
-	"""
-	conn = None
-	try:
-		conn = sqlite3.connect(db_file)
-		return conn
-	except Error as e:
-		print(e)
- 
-	return conn
- 
- 
-def create_table(conn, create_table_sql):
-	""" create a table from the create_table_sql statement
-	:param conn: Connection object
-	:param create_table_sql: a CREATE TABLE statement
-	:return:
-	"""
-	try:
-		c = conn.cursor()
-		c.execute(create_table_sql)
-	except Error as e:
-		print(e)
-
-
 def create_eidDoi(conn, eidDoi):
 	"""
 	Create a new eidDoi mapping into the eidDoi table
@@ -81,18 +47,18 @@ def populateDbEidDoi(dbFilename,path):
 									  ); """
 	
 	# create a database connection
-	conn = create_connection(dbFilename)
+	conn = mylib.create_connection(dbFilename)
  
 	# create tables
 	if conn is not None:
-		create_table(conn, sql_create_eidDoi_table)
+		mylib.create_table(conn, sql_create_eidDoi_table)
 		conn.close()
 	else:
 		print("Error! cannot create the database connection.")
 	
 	
 	# populate table eidDoi
-	conn = create_connection(dbFilename)
+	conn = mylib.create_connection(dbFilename)
 	with conn:
 		contents = glob(path + "*.json")
 		contents.sort()
@@ -111,22 +77,6 @@ def populateDbEidDoi(dbFilename,path):
 				#print ("EID: %s - DOI: %s" % (eid,doi))
 				
 				create_eidDoi(conn,(eid,doi))
-
-
-def select_doiEidMap(dbFile):
-	q = """
-		SELECT DISTINCT eid,doi
-		FROM eidDoi
-		ORDER BY eid
-		"""
-	
-	# create a database connection
-	conn = create_connection(dbFile)
-	with conn:
-		cur = conn.cursor()
-		cur.execute(q)
-		rows = cur.fetchall()
-	return rows
 
 
 def computeAndSave_authorDoisMapping_listaDoisToDownload(tsv,fileMapping,fileLista,numDoisForeachCandidate=5):
@@ -220,7 +170,7 @@ listaDoisToDownload = load__listaDoisToDownload(fileListaDoisToDownload)
 # LOAD (REQ: COMPUTE -> db updated)
 eidDoiMap = dict()
 doiEidMap = dict()
-rows = select_doiEidMap(conf.dbFilename)
+rows = mylib.select_doiEidMap(conf.dbFilename)
 for row in rows:
 	eid = row[0]
 	doi = row[1]
@@ -268,7 +218,7 @@ print ("Numero DOI da scaricare: %s" % len(doisToDownload_subset))
 
 # DOWNLOAD FILTERED DOIs 
 for doi in doisToDownload_subset:
-	conn = create_connection(conf.dbFilename)
+	conn = mylib.create_connection(conf.dbFilename)
 	with conn:
 		print ('Processing ' + doi)
 		jsonAbs = mylib.getAbstract(doi, 'DOI', apikeys.keys)

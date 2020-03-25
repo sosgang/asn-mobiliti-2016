@@ -26,52 +26,6 @@ fileListaDoisToDownload = "../../data/input/04.doisToDownload-list.txt"
 pathAbstracts = "../../data/output/abstracts/"
 
 
-
-def create_connection(db_file):
-	""" create a database connection to the SQLite database
-		specified by db_file
-	:param db_file: database file
-	:return: Connection object or None
-	"""
-	conn = None
-	try:
-		conn = sqlite3.connect(db_file)
-		return conn
-	except Error as e:
-		print(e)
- 
-	return conn
-
-
-def create_table(conn, create_table_sql):
-	""" create a table from the create_table_sql statement
-	:param conn: Connection object
-	:param create_table_sql: a CREATE TABLE statement
-	:return:
-	"""
-	try:
-		c = conn.cursor()
-		c.execute(create_table_sql)
-	except Error as e:
-		print(e)
-
-
-def select_doiEidMap(dbFile):
-	q = """
-		SELECT DISTINCT eid,doi
-		FROM eidDoi
-		ORDER BY eid
-		"""
-	
-	# create a database connection
-	conn = create_connection(dbFile)
-	with conn:
-		cur = conn.cursor()
-		cur.execute(q)
-		rows = cur.fetchall()
-	return rows
-	
-
 def create_scopusPublication(conn, scopusPublication):
 	"""
 	Create a new publication into the scopusPublication table
@@ -140,13 +94,13 @@ def populateDb_scopusData(dbFilename,path):
 									  ); """
 	
 	# create a database connection
-	conn = create_connection(dbFilename)
+	conn = mylib.create_connection(dbFilename)
  
 	# create tables
 	if conn is not None:
-		create_table(conn, sql_create_scopusPublication_table)
-		create_table(conn, sql_create_scopusAuthor_table)
-		create_table(conn, sql_create_wroteRelation_table)
+		mylib.create_table(conn, sql_create_scopusPublication_table)
+		mylib.create_table(conn, sql_create_scopusAuthor_table)
+		mylib.create_table(conn, sql_create_wroteRelation_table)
 		conn.close()
 	else:
 		print("Error! cannot create the database connection.")
@@ -155,7 +109,7 @@ def populateDb_scopusData(dbFilename,path):
 	
 	eidDoiMap = dict()
 	doiEidMap = dict()
-	rows = select_doiEidMap(dbFilename)
+	rows = mylib.select_doiEidMap(dbFilename)
 	for row in rows:
 		eid = row[0]
 		doi = row[1]
@@ -167,7 +121,7 @@ def populateDb_scopusData(dbFilename,path):
 	
 	# POPULATE SCOPUSPUBLICATION, SCOPUAUTHOR, WROTERELATION TABLES
 	i = 1
-	conn = create_connection(dbFilename)
+	conn = mylib.create_connection(dbFilename)
 	with conn:
 		contents = glob(path + '*.json')
 		contents.sort()
@@ -240,30 +194,13 @@ def populateDb_scopusData(dbFilename,path):
 					wroteTuple = (auid, eid, seq)
 					create_wroteRelation(conn, wroteTuple)
 				
-def load_authorDoisMapping(fileMapping):
-	with open(fileMapping, "r") as read_file:
-		data = json.load(read_file)
-		return data
+
 
 
 def load__listaDoisToDownload(fileLista):
 	with open(fileLista, "rb") as fp:	# unpickling
 		lista = pickle.load(fp)
 		return lista
-
-
-def create_matchSurnameName(conn, matchSurnameName):
-	"""
-	Create a new record into the matchSurnameName table
-	:param conn:
-	:param record:
-	:return: matchSurnameName id
-	"""
-	sql = ''' INSERT INTO matchSurnameName(cvId,auid)
-			  VALUES(?,?) '''
-	cur = conn.cursor()
-	cur.execute(sql, matchSurnameName)
-	return cur.lastrowid
 
 
 populateDb_scopusData(conf.dbFilename,pathAbstracts)
@@ -312,7 +249,7 @@ populateDb_scopusData(conf.dbFilename,pathAbstracts)
 '''
 eidDoiMap = dict()
 doiEidMap = dict()
-rows = select_doiEidMap(conf.dbFilename)
+rows = mylib.select_doiEidMap(conf.dbFilename)
 for row in rows:
 	eid = row[0]
 	doi = row[1]
@@ -322,7 +259,7 @@ for row in rows:
 		doiEidMap[doi] = eid
 
 # LOAD
-authorDoisMapping = load_authorDoisMapping(fileAuthorDoisMapping)
+authorDoisMapping = mylib.loadJson(fileAuthorDoisMapping)
 listaDoisToDownload = load__listaDoisToDownload(fileListaDoisToDownload)
 
 #counterPerfectMatch = 0
