@@ -25,6 +25,21 @@ pathAbstracts = "../../data/output/abstracts/"
 
 fileAuthorDoisMapping_postStep07 = "../../data/input/04.authorDoisMapping_POST_STEP_07.json"
 
+
+def create_eidDoi(conn, eidDoi):
+	"""
+	Create a new eidDoi mapping into the eidDoi table
+	:param conn:
+	:param dieDoi:
+	:return: eidDoi id
+	"""
+	sql = ''' INSERT INTO eidDoi(eid,doi)
+			  VALUES(?,?) '''
+	cur = conn.cursor()
+	cur.execute(sql, eidDoi)
+	return cur.lastrowid
+
+
 newAuthorDoisMapping = mylib.loadJson(fileAuthorDoisMapping_postStep07)
 print ("CVs still to match = %d" % len(newAuthorDoisMapping.keys()))
 
@@ -66,6 +81,9 @@ for doi in doisToDownload:
 		with conn:
 			print ('%d) Processing %s' % (counter,doi))
 			jsonAbs = mylib.getAbstract(doi, 'DOI', apikeys.keys)
+			#print ("DORMO")
+			#time.sleep(30)
+			#print ("MI SVEGLIO")
 			if jsonAbs is not None:
 				mylib.saveJsonAbstract(jsonAbs,pathAbstracts)
 				print ('\tSaved to file.')

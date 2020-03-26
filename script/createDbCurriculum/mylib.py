@@ -42,6 +42,8 @@ def getAbstract(doi, doiOrEid, apikeys, max_retry=2, retry_delay=1):
 		if r.status_code == 429:
 			print ("Quota exceeded for key " + apikeys[0] + " - EXIT.")
 			apikeys.pop(0)
+			time.sleep(0.5)
+			continue
 		
 		elif r.status_code > 200 and r.status_code < 500:
 			print(u"{}: errore nella richiesta: {}".format(r.status_code, r.url))
