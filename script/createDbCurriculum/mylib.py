@@ -552,6 +552,47 @@ def create_table(conn, create_table_sql):
 		print(e)
 
 
+def create_scopusPublication(conn, scopusPublication):
+	"""
+	Create a new publication into the scopusPublication table
+	:param conn:
+	:param scopusPublication:
+	:return: scopusPublication id
+	"""
+	sql = ''' INSERT INTO scopusPublication(eid, doi, publicationDate,publicationYear,title,venueName,numAuthors)
+			  VALUES(?,?,?,?,?,?,?) '''
+	cur = conn.cursor()
+	cur.execute(sql, scopusPublication)
+	return cur.lastrowid
+
+def create_scopusAuthor(conn, scopusAuthor):
+	"""
+	Create a new author into the scopusAuthor table
+	:param conn:
+	:param author:
+	:return: scopusAuthor id
+	"""
+	sql = ''' INSERT INTO scopusAuthor(auid, firstname,initials,surname)
+			  VALUES(?,?,?,?) '''
+	cur = conn.cursor()
+	cur.execute(sql, scopusAuthor)
+	return cur.lastrowid
+
+
+def create_wroteRelation(conn, wroteRelation):
+	"""
+	Create a new record into the wroteRelation table
+	:param conn:
+	:param wroteRelation record:
+	:return: wroteRelation id
+	"""
+	sql = ''' INSERT INTO wroteRelation(auid, eid, position)
+			  VALUES(?,?,?) '''
+	cur = conn.cursor()
+	cur.execute(sql, wroteRelation)
+	return cur.lastrowid
+	
+
 def create_matchSurnameName(conn, matchSurnameName):
 	"""
 	Create a new record into the matchSurnameName table
@@ -637,7 +678,6 @@ def select_doiEidMap(dbFile):
 		FROM eidDoi
 		ORDER BY eid
 		"""
-	
 	# create a database connection
 	conn = create_connection(dbFile)
 	with conn:
@@ -647,11 +687,32 @@ def select_doiEidMap(dbFile):
 	return rows
 
 
+def select_scopusPublication(dbFile):
+	q = """
+		SELECT DISTINCT eid,doi
+		FROM scopusPublication
+		ORDER BY eid
+		"""
+	# create a database connection
+	conn = create_connection(dbFile)
+	with conn:
+		cur = conn.cursor()
+		cur.execute(q)
+		rows = cur.fetchall()
+	return rows
+
 #def load_authorDoisMapping(fileMapping):
 def loadJson(fileMapping):
 	with open(fileMapping, "r") as read_file:
 		data = json.load(read_file)
 		return data
+
+
+def load__listaDoisToDownload(fileLista):
+	with open(fileLista, "rb") as fp:	# unpickling
+		lista = pickle.load(fp)
+		return lista
+
 
 '''
 def addAsnOutcomesToTsv(tsvIn, tsvOut, pathAsnDownload):

@@ -26,47 +26,6 @@ fileListaDoisToDownload = "../../data/input/04.doisToDownload-list.txt"
 pathAbstracts = "../../data/output/abstracts/"
 
 
-def create_scopusPublication(conn, scopusPublication):
-	"""
-	Create a new publication into the scopusPublication table
-	:param conn:
-	:param scopusPublication:
-	:return: scopusPublication id
-	"""
-	sql = ''' INSERT INTO scopusPublication(eid, doi, publicationDate,publicationYear,title,venueName,numAuthors)
-			  VALUES(?,?,?,?,?,?,?) '''
-	cur = conn.cursor()
-	cur.execute(sql, scopusPublication)
-	return cur.lastrowid
-
-def create_scopusAuthor(conn, scopusAuthor):
-	"""
-	Create a new author into the scopusAuthor table
-	:param conn:
-	:param author:
-	:return: scopusAuthor id
-	"""
-	sql = ''' INSERT INTO scopusAuthor(auid, firstname,initials,surname)
-			  VALUES(?,?,?,?) '''
-	cur = conn.cursor()
-	cur.execute(sql, scopusAuthor)
-	return cur.lastrowid
-
-
-def create_wroteRelation(conn, wroteRelation):
-	"""
-	Create a new record into the wroteRelation table
-	:param conn:
-	:param wroteRelation record:
-	:return: wroteRelation id
-	"""
-	sql = ''' INSERT INTO wroteRelation(auid, eid, position)
-			  VALUES(?,?,?) '''
-	cur = conn.cursor()
-	cur.execute(sql, wroteRelation)
-	return cur.lastrowid
-
-									  
 def populateDb_scopusData(dbFilename,path):
 	sql_create_scopusPublication_table = """CREATE TABLE IF NOT EXISTS scopusPublication (
 										eid text NOT NULL PRIMARY KEY,
@@ -169,7 +128,7 @@ def populateDb_scopusData(dbFilename,path):
 				
 				scopusPublicationTuple = (eid,doi,publicationDate,publicationYear,title,venueName,numAuthors)
 				try:
-					create_scopusPublication(conn, scopusPublicationTuple)
+					mylib.create_scopusPublication(conn, scopusPublicationTuple)
 				except:
 					print ("WARNING - PUBLICATION ALREADY IN THE DB - %s, %s, %s, %s, %s, %s, %s" % (eid,doi,publicationDate,publicationYear,title,venueName,numAuthors))
 				
@@ -187,20 +146,14 @@ def populateDb_scopusData(dbFilename,path):
 					
 					scopusAuthorTuple = (auid,firstname,initials,surname)
 					try:
-						create_scopusAuthor(conn, scopusAuthorTuple)
+						mylib.create_scopusAuthor(conn, scopusAuthorTuple)
 					except:
 						print ("WARNING - AUTHOR ALREADY IN THE DB - %s, %s, %s, %s" % (auid,firstname,initials,surname))
 					
 					wroteTuple = (auid, eid, seq)
-					create_wroteRelation(conn, wroteTuple)
+					mylib.create_wroteRelation(conn, wroteTuple)
 				
 
-
-
-def load__listaDoisToDownload(fileLista):
-	with open(fileLista, "rb") as fp:	# unpickling
-		lista = pickle.load(fp)
-		return lista
 
 
 populateDb_scopusData(conf.dbFilename,pathAbstracts)
