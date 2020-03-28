@@ -26,20 +26,6 @@ fileListaDoisToDownload = "../../data/input/04.doisToDownload-list.txt"
 pathAbstracts = "../../data/output/abstracts/"
 
 
-def select_surnameName(conn,cvId):
-	q = """
-		SELECT DISTINCT cognome,nome
-		FROM curriculum
-		WHERE id = {idCurriculum}
-		"""
-	
-	# create a database connection
-	cur = conn.cursor()
-	cur.execute(q.format(idCurriculum=cvId))
-	rows = cur.fetchall()
-	return rows
-
-
 def computeMatch_SurnameName(dbFilename,fileAuthorDoisMapping):
 	sql_create_matchSurnameName_table = """CREATE TABLE IF NOT EXISTS matchSurnameName (
 										cvId text NOT NULL,
@@ -93,7 +79,7 @@ def computeMatch_SurnameName(dbFilename,fileAuthorDoisMapping):
 				counter += 1
 				continue
 			
-			res = select_surnameName(conn, cvId)
+			res = mylib.select_surnameName(conn, cvId)
 			cvSurname = res[0][0]
 			cvFirstname = res[0][1]
 			print ("%d) %s, %s - %s" % (counter,cvId,cvSurname,cvFirstname))

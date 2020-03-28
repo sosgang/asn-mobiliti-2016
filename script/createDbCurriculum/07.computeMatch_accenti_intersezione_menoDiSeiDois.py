@@ -28,34 +28,6 @@ pathAbstracts = "../../data/output/abstracts/"
 fileAuthorDoisMapping_postStep07 = "../../data/input/04.authorDoisMapping_POST_STEP_07.json"
 
 
-def select_surnameName(conn,cvId):
-	q = """
-		SELECT DISTINCT cognome,nome
-		FROM curriculum
-		WHERE id = {idCurriculum}
-		"""
-	
-	# create a database connection
-	cur = conn.cursor()
-	cur.execute(q.format(idCurriculum=cvId))
-	rows = cur.fetchall()
-	return rows
-
-
-def create_matchSurname(conn, matchSurname):
-	"""
-	Create a new record into the matchSurname table
-	:param conn:
-	:param record:
-	:return: matchSurname id
-	"""
-	sql = ''' INSERT INTO matchSurname(cvId,auid)
-			  VALUES(?,?) '''
-	cur = conn.cursor()
-	cur.execute(sql, matchSurname)
-	return cur.lastrowid
-
-
 def idCvInMatch(cvId,conn):
 	queries = [
 		"SELECT * FROM matchSurnameName WHERE cvId = '{cvIdentifier}'",
@@ -96,7 +68,7 @@ def computeAndSave_newAuthorDoisMapping(dbFilename,fileAuthorDoisMapping_toLoad,
 			
 			authorDoisMapping_new[cvId] = authorDoisMapping[cvId]
 			
-			res = select_surnameName(conn, cvId)
+			res = mylib.select_surnameName(conn, cvId)
 			cvSurname = res[0][0]
 			cvFirstname = res[0][1]
 			print ("%d) %s, %s - %s" % (counter,cvId,cvSurname,cvFirstname))
@@ -130,7 +102,7 @@ def computeMatch_SurnameName_accenti(dbFilename,fileAuthorDoisMapping):
 				print ("*** SKIP ***")
 				continue
 			
-			res = select_surnameName(conn, cvId)
+			res = mylib.select_surnameName(conn, cvId)
 			cvSurname = res[0][0]
 			cvFirstname = res[0][1]
 			authorDois = newAuthorDoisMapping[cvId]
@@ -204,7 +176,7 @@ def computeMatch_SurnameName_methodBoh(dbFilename,fileAuthorDoisMapping):
 				print ("*** SKIP ***")
 				continue
 			
-			res = select_surnameName(conn, cvId)
+			res = mylib.select_surnameName(conn, cvId)
 			cvSurname = res[0][0]
 			cvFirstname = res[0][1]
 			authorDois = newAuthorDoisMapping[cvId]
@@ -269,7 +241,7 @@ def computeMatch_SurnameName_methodIntersection(dbFilename,fileAuthorDoisMapping
 				mylib.create_matchNoDois(conn,matchNoDois)
 				continue
 			
-			res = select_surnameName(conn, cvId)
+			res = mylib.select_surnameName(conn, cvId)
 			cvSurname = res[0][0]
 			cvFirstname = res[0][1]
 			
@@ -369,7 +341,7 @@ def computeMatch_lessThanSixDois(dbFilename,fileAuthorDoisMapping):
 				mylib.create_matchNoDois(conn,matchNoDois)
 				continue
 			
-			res = select_surnameName(conn, cvId)
+			res = mylib.select_surnameName(conn, cvId)
 			cvSurname = res[0][0]
 			cvFirstname = res[0][1]
 			

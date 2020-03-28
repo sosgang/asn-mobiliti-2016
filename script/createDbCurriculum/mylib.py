@@ -649,6 +649,20 @@ def create_matchNoDois(conn, matchNoDois):
 	return cur.lastrowid
 
 
+def create_match(conn, match):
+	"""
+	Create a new record into the matchCvidAuid table
+	:param conn:
+	:param record:
+	:return: match id
+	"""
+	sql = ''' INSERT INTO matchCvidAuid(cvId,auid,matchSurnameName,matchSurname,matchIntersection,numDois,numEids)
+			  VALUES(?,?,?,?,?,?,?) '''
+	cur = conn.cursor()
+	cur.execute(sql, match)
+	return cur.lastrowid
+
+
 def select_match_caseInsensitive(conn,eid,surname,firstname):
 	q = """
 		SELECT scopusAuthor.auid AS auid
@@ -700,6 +714,21 @@ def select_scopusPublication(dbFile):
 		cur.execute(q)
 		rows = cur.fetchall()
 	return rows
+
+
+def select_surnameName(conn,cvId):
+	q = """
+		SELECT DISTINCT cognome,nome
+		FROM curriculum
+		WHERE id = {idCurriculum}
+		"""
+	
+	# create a database connection
+	cur = conn.cursor()
+	cur.execute(q.format(idCurriculum=cvId))
+	rows = cur.fetchall()
+	return rows
+
 
 #def load_authorDoisMapping(fileMapping):
 def loadJson(fileMapping):

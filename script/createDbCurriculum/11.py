@@ -39,10 +39,79 @@ def searchAuthorIds_SurnameName(doisCandidate,surname,firstname,conn,doiEidMap):
 		rows = mylib.select_match_caseInsensitive(conn,eidCandidate,surname,firstname)
 		if len(rows) > 0:
 			print ("\tFOUND") # #%d" % counter_match)
-				
 			for row in rows:
 				auids.add(row[0])
 			break
+	return auids
+
+
+def myReplace(word,replaceType):
+	if word is None:
+		return None
+	elif replaceType == "accentiGravi":
+		return word.replace("a'","à").replace("e'","è").replace("i'","ì").replace("o'","ò").replace("u'","ù")
+	elif replaceType == "accentiAcuti":
+		return word.replace("e'","é")
+	elif replaceType == "apostrofi":
+		return word.replace("'","")
+	elif replaceType == "trattino":
+		return word.replace("-"," ")
+	else:
+		print ("ERROR in myReplace(). Exit.")
+		sys.exit()
+		
+def searchAuthorIds_SurnameName_v2(dois,surname,firstname,conn,doiEidMap):
+	#auids = searchAuthorIds_SurnameName(dois,cvSurname.replace("a'","à").replace("e'","è").replace("i'","ì").replace("o'","ò").replace("u'","ù"),cvFirstname.replace("a'","à").replace("e'","è").replace("i'","ì").replace("o'","ò").replace("u'","ù"),conn,doiEidMap)
+	#auids = searchAuthorIds_SurnameName(dois,cvSurname.replace("e'","é"),cvFirstname.replace("e'","é"),conn,doiEidMap)
+	#auids = searchAuthorIds_SurnameName(dois,cvSurname.replace("'",""),cvFirstname.replace("'",""),conn,doiEidMap)
+	if firstname is not None:
+		msgType = "surname+name"
+	else:
+		msgType = "surname"
+		
+	auids = set()
+	for doi in dois:
+		try:
+			eid = doiEidMap[doi]
+		except:
+			#eid = None
+			continue
+		
+		rows = mylib.select_match_caseInsensitive(conn,eid,surname,firstname)
+		if len(rows) > 0:
+			print ("\tFOUND AS-IS (%s)" % msgType) # #%d" % counter_match)
+			for row in rows:
+				auids.add(row[0])
+			break
+		
+		rows = mylib.select_match_caseInsensitive(conn,eid,myReplace(surname,"accentiGravi"),myReplace(firstname,"accentiGravi"))
+		if len(rows) > 0:
+			print ("\tFOUND ACCENTIGRAVI (%s)" % msgType) # #%d" % counter_match)
+			for row in rows:
+				auids.add(row[0])
+			break
+		
+		rows = mylib.select_match_caseInsensitive(conn,eid,myReplace(surname,"accentiAcuti"),myReplace(firstname,"accentiAcuti"))
+		if len(rows) > 0:
+			print ("\tFOUND ACCENTIACUTI (%s)" % msgType) # #%d" % counter_match)
+			for row in rows:
+				auids.add(row[0])
+			break
+		
+		rows = mylib.select_match_caseInsensitive(conn,eid,myReplace(surname,"apostrofi"),myReplace(firstname,"apostrofi"))
+		if len(rows) > 0:
+			print ("\tFOUND APOSTROFI (%s)" % msgType) # #%d" % counter_match)
+			for row in rows:
+				auids.add(row[0])
+			break
+		
+		rows = mylib.select_match_caseInsensitive(conn,eid,myReplace(surname,"trattino"),myReplace(firstname,"apostrofi"))
+		if len(rows) > 0:
+			print ("\tFOUND TRATTINO (%s)" % msgType) # #%d" % counter_match)
+			for row in rows:
+				auids.add(row[0])
+			break
+			
 	return auids
 
 
@@ -111,18 +180,18 @@ def	searchAuthorId_intersection(dois,doiEidMap,path,minPapersInIntersection=5):
 	
 
 def computeMatch_SurnameName(dbFilename,fileAuthorDoisMapping):
-	'''
-	sql_create_matchSurnameName_table = """CREATE TABLE IF NOT EXISTS matchSurnameName (
+	
+	sql_create_matchCvidAuid_table = """CREATE TABLE IF NOT EXISTS matchCvidAuid (
 										cvId text NOT NULL,
-										auid text NOT NULL,
+										auid text,
+										matchSurnameName integer,
+										matchSurname integer,
+										matchIntersection integer,
+										numDois integer,
+										numEids integer,
 										FOREIGN KEY (cvId) REFERENCES curriculum(id),
-										FOREIGN KEY (auid) REFERENCES scopusAuthor(auid)
-									  ); """
-	sql_create_matchSurname_table = """CREATE TABLE IF NOT EXISTS matchSurname (
-										cvId text NOT NULL,
-										auid text NOT NULL,
-										FOREIGN KEY (cvId) REFERENCES curriculum(id),
-										FOREIGN KEY (auid) REFERENCES scopusAuthor(auid)
+										FOREIGN KEY (auid) REFERENCES scopusAuthor(auid),
+										PRIMARY KEY(cvId,auid)
 									  ); """
 	
 	
@@ -131,14 +200,10 @@ def computeMatch_SurnameName(dbFilename,fileAuthorDoisMapping):
  
 	# create tables
 	if conn is not None:
-		mylib.create_table(conn, sql_create_matchSurnameName_table)
-		mylib.create_table(conn, sql_create_matchSurname_table)
+		mylib.create_table(conn, sql_create_matchCvidAuid_table)
 		conn.close()
 	else:
 		print("Error! cannot create the database connection.")
-	'''
-	newAuthorDoisMapping = mylib.loadJson(fileAuthorDoisMapping)
-	print ("CVs still to match = %d" % len(newAuthorDoisMapping.keys()))
 	
 	eidDoiMap = dict()
 	doiEidMap = dict()
@@ -159,21 +224,89 @@ def computeMatch_SurnameName(dbFilename,fileAuthorDoisMapping):
 			table = list(spamreader)
 			for row in table:
 				idCv = row["ID_CV"]
-				if idCv not in newAuthorDoisMapping.keys():
-					continue
+				#if idCv not in newAuthorDoisMapping.keys():
+				#	continue
 				if "NO-CV-" in idCv:
+					matchTuple = (idCv,None,False,False,False,0,0)
+					#print (matchTuple)
+					mylib.create_match(conn,matchTuple)
 					continue
 				
-				#doisToDownload.add(doiCandidate)
 				res = mylib.select_surnameName(conn, idCv)
 				cvSurname = res[0][0]
 				cvFirstname = res[0][1]
 				
 				doisCandidate = ast.literal_eval(row["DOIS ESISTENTI"])
+				eidsCandidate = set()
+				for doiCandidate in doisCandidate:
+					try:
+						#print ("\t" + doiEidMap[doiCandidate])
+						eidsCandidate.add(doiEidMap[doiCandidate])
+					except:
+						continue
 				
-				print ("%d/%d) %s, %s - %s (%d DOIs)" % (counter,len(newAuthorDoisMapping.keys()),idCv,cvSurname,cvFirstname,len(doisCandidate)))
+				print ("%d/%d) %s, %s - %s (%d DOIs)" % (counter,len(table),idCv,cvSurname,cvFirstname,len(doisCandidate)))
 				counter += 1
 				
+				# se non ho nessun EID (= nessun paper) => inserisco match con auid NULL ed esco
+				if len(eidsCandidate) == 0:
+					matchTuple = (idCv,None,False,False,False,len(doisCandidate),len(eidsCandidate))
+					#print (matchTuple)
+					mylib.create_match(conn,matchTuple)
+					#sys.exit()
+					continue
+				
+				auids_surnameName = searchAuthorIds_SurnameName_v2(doisCandidate,cvSurname,cvFirstname,conn,doiEidMap)
+				auids_surname = searchAuthorIds_SurnameName_v2(doisCandidate,cvSurname,None,conn,doiEidMap)
+				auid_intersection = searchAuthorId_intersection(doisCandidate,doiEidMap,pathAbstracts)
+				
+				# se non ho trovato match => inserisco match con auid NULL ed esco
+				if len(auids_surnameName) == 0 and len(auids_surname) == 0 and auid_intersection is None:
+					matchTuple = (idCv,None,False,False,False,len(doisCandidate),len(eidsCandidate))
+					#print (matchTuple)
+					mylib.create_match(conn,matchTuple)
+					continue
+					
+				for auid_surnameName in auids_surnameName:
+					inSurname = False
+					if auid_surnameName in auids_surname:
+						inSurname = True
+						auids_surname.remove(auid_surnameName)
+					
+					inIntersection = False
+					if auid_surnameName == auid_intersection:
+						inIntersection = True
+						auid_intersection = None
+					
+					matchTuple = (idCv,auid_surnameName,True,inSurname,inIntersection,len(doisCandidate),len(eidsCandidate))
+					#print (matchTuple)
+					mylib.create_match(conn,matchTuple)
+				
+				for auid_surname in auids_surname:
+					inSurnameName = False
+					if auid_surname in auids_surnameName:
+						#inSurnameName = True
+						#auids_surnameName.remove(auid_surname)
+						print ("ERROR (auid_surname): this should not happen. Exit.")
+						sys.exit()
+						
+					inIntersection = False
+					if auid_surname == auid_intersection:
+						inIntersection = True
+						auid_intersection = None
+					
+					matchTuple = (idCv,auid_surname,inSurnameName,True,inIntersection,len(doisCandidate),len(eidsCandidate))
+					#print (matchTuple)
+					mylib.create_match(conn,matchTuple)
+				
+				if auid_intersection is not None:
+					if auid_intersection in auids_surnameName or auid_intersection in auids_surname:
+						print ("ERROR (auid_intersection): this should not happen. Exit.")
+						sys.exit()
+					matchTuple = (idCv,auid_surnameName,False,False,True,len(doisCandidate),len(eidsCandidate))
+					#print (matchTuple)
+					mylib.create_match(conn,matchTuple)
+				'''	
 				# SURNAME AND FIRSTNAME
 				auids = searchAuthorIds_SurnameName(doisCandidate,cvSurname,cvFirstname,conn,doiEidMap)
 				if len(auids) != 0:
@@ -184,7 +317,6 @@ def computeMatch_SurnameName(dbFilename,fileAuthorDoisMapping):
 					continue
 				
 				auids = searchAuthorIds_SurnameName(doisCandidate,cvSurname.replace("a'","à").replace("e'","è").replace("i'","ì").replace("o'","ò").replace("u'","ù"),cvFirstname.replace("a'","à").replace("e'","è").replace("i'","ì").replace("o'","ò").replace("u'","ù"),conn,doiEidMap)
-				
 				if len(auids) != 0:
 					counter_match += 1
 					for auid in auids:
@@ -248,10 +380,10 @@ def computeMatch_SurnameName(dbFilename,fileAuthorDoisMapping):
 					matchIntersection = (idCv,auid)
 					#mylib.create_matchIntersection(conn,matchIntersection)
 					continue
-
+				'''
 					
 computeMatch_SurnameName(conf.dbFilename,fileAuthorDoisMapping_postStep07)
-
+'''
 def idCvInMatch(cvId,conn):
 	queries = [
 		"SELECT * FROM matchSurnameName WHERE cvId = '{cvIdentifier}'",
@@ -278,3 +410,4 @@ with conn:
 		else:
 			notFound += 1
 print ("Totali = %d\nTrovati = %d\nNon trovati = %d" % (found+notFound,found,notFound))
+'''
