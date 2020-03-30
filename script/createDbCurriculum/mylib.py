@@ -701,6 +701,18 @@ def select_doiEidMap(dbFile):
 	return rows
 
 
+def select_cvidInMatchCvidAuid(conn,idCv):
+	q = """
+		SELECT *
+		FROM matchCvidAuid
+		WHERE cvId = '{idCurriculum}'
+		"""
+	cur = conn.cursor()
+	cur.execute(q.format(idCurriculum=idCv))
+	rows = cur.fetchall()
+	return rows 
+	
+
 def select_scopusPublication(dbFile):
 	q = """
 		SELECT DISTINCT eid,doi

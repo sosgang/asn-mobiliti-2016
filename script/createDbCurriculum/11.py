@@ -59,7 +59,71 @@ def myReplace(word,replaceType):
 	else:
 		print ("ERROR in myReplace(). Exit.")
 		sys.exit()
+
+
+def searchAuthorIds_SurnameName_v3(eids,surname,firstname,conn,doiEidMap):
+	#auids = searchAuthorIds_SurnameName(dois,cvSurname.replace("a'","à").replace("e'","è").replace("i'","ì").replace("o'","ò").replace("u'","ù"),cvFirstname.replace("a'","à").replace("e'","è").replace("i'","ì").replace("o'","ò").replace("u'","ù"),conn,doiEidMap)
+	#auids = searchAuthorIds_SurnameName(dois,cvSurname.replace("e'","é"),cvFirstname.replace("e'","é"),conn,doiEidMap)
+	#auids = searchAuthorIds_SurnameName(dois,cvSurname.replace("'",""),cvFirstname.replace("'",""),conn,doiEidMap)
+	if firstname is not None:
+		msgType = "surname+name"
+	else:
+		msgType = "surname"
 		
+	found = False
+	auids = set()
+	for eid in eids:
+		rows = mylib.select_match_caseInsensitive(conn,eid,surname,firstname)
+		if len(rows) > 0:
+			print ("\tFOUND AS-IS (%s)" % msgType) # #%d" % counter_match)
+			for row in rows:
+				auids.add(row[0])
+			#break
+			found = True
+	
+	if not found:
+		for eid in eids:
+			rows = mylib.select_match_caseInsensitive(conn,eid,myReplace(surname,"accentiGravi"),myReplace(firstname,"accentiGravi"))
+			if len(rows) > 0:
+				print ("\tFOUND ACCENTIGRAVI (%s)" % msgType) # #%d" % counter_match)
+				for row in rows:
+					auids.add(row[0])
+				#break
+				found = True
+			
+	if not found:
+		for eid in eids:
+			rows = mylib.select_match_caseInsensitive(conn,eid,myReplace(surname,"accentiAcuti"),myReplace(firstname,"accentiAcuti"))
+			if len(rows) > 0:
+				print ("\tFOUND ACCENTIACUTI (%s)" % msgType) # #%d" % counter_match)
+				for row in rows:
+					auids.add(row[0])
+				#break
+				found = True
+		
+	if not found:
+		for eid in eids:
+			rows = mylib.select_match_caseInsensitive(conn,eid,myReplace(surname,"apostrofi"),myReplace(firstname,"apostrofi"))
+			if len(rows) > 0:
+				print ("\tFOUND APOSTROFI (%s)" % msgType) # #%d" % counter_match)
+				for row in rows:
+					auids.add(row[0])
+				#break
+				found = True
+		
+	if not found:
+		for eid in eids:
+			rows = mylib.select_match_caseInsensitive(conn,eid,myReplace(surname,"trattino"),myReplace(firstname,"apostrofi"))
+			if len(rows) > 0:
+				print ("\tFOUND TRATTINO (%s)" % msgType) # #%d" % counter_match)
+				for row in rows:
+					auids.add(row[0])
+				#break
+				found = True
+			
+	return auids
+		
+
 def searchAuthorIds_SurnameName_v2(dois,surname,firstname,conn,doiEidMap):
 	#auids = searchAuthorIds_SurnameName(dois,cvSurname.replace("a'","à").replace("e'","è").replace("i'","ì").replace("o'","ò").replace("u'","ù"),cvFirstname.replace("a'","à").replace("e'","è").replace("i'","ì").replace("o'","ò").replace("u'","ù"),conn,doiEidMap)
 	#auids = searchAuthorIds_SurnameName(dois,cvSurname.replace("e'","é"),cvFirstname.replace("e'","é"),conn,doiEidMap)
@@ -115,7 +179,7 @@ def searchAuthorIds_SurnameName_v2(dois,surname,firstname,conn,doiEidMap):
 	return auids
 
 
-def	searchAuthorId_intersection(dois,doiEidMap,path,minPapersInIntersection=5):
+def	searchAuthorId_intersection(dois,doiEidMap,path,minPapersInIntersection=2):
 	eids = list()
 	authorsSet = set()
 	authorsInfo = dict()
@@ -215,18 +279,26 @@ def computeMatch_SurnameName(dbFilename,fileAuthorDoisMapping):
 		if doi is not None:
 			doiEidMap[doi] = eid
 
-	counter = 1
+	counter = 0
 	counter_match = 1 
-	conn = mylib.create_connection(dbFilename)
-	with conn:
-		with open(tsvFN, newline='') as tsvFile:
-			spamreader = csv.DictReader(tsvFile, delimiter='\t')
-			table = list(spamreader)
-			for row in table:
+	
+	with open(tsvFN, newline='') as tsvFile:
+		spamreader = csv.DictReader(tsvFile, delimiter='\t')
+		table = list(spamreader)
+		for row in table:
+			conn = mylib.create_connection(dbFilename)
+			with conn:
+				counter += 1
 				idCv = row["ID_CV"]
+				
+				if len(mylib.select_cvidInMatchCvidAuid(conn,idCv)) > 0:
+					print ("%d) cvId %s already in table matchCvidAuid -> Skip." % (counter,idCv))
+					continue
+				
 				#if idCv not in newAuthorDoisMapping.keys():
 				#	continue
 				if "NO-CV-" in idCv:
+					print ("%d) NO-CV (%s) -> Skip." % (counter,idCv))
 					matchTuple = (idCv,None,False,False,False,0,0)
 					#print (matchTuple)
 					mylib.create_match(conn,matchTuple)
@@ -246,7 +318,7 @@ def computeMatch_SurnameName(dbFilename,fileAuthorDoisMapping):
 						continue
 				
 				print ("%d/%d) %s, %s - %s (%d DOIs)" % (counter,len(table),idCv,cvSurname,cvFirstname,len(doisCandidate)))
-				counter += 1
+				
 				
 				# se non ho nessun EID (= nessun paper) => inserisco match con auid NULL ed esco
 				if len(eidsCandidate) == 0:
@@ -256,8 +328,10 @@ def computeMatch_SurnameName(dbFilename,fileAuthorDoisMapping):
 					#sys.exit()
 					continue
 				
-				auids_surnameName = searchAuthorIds_SurnameName_v2(doisCandidate,cvSurname,cvFirstname,conn,doiEidMap)
-				auids_surname = searchAuthorIds_SurnameName_v2(doisCandidate,cvSurname,None,conn,doiEidMap)
+				#auids_surnameName = searchAuthorIds_SurnameName_v2(doisCandidate,cvSurname,cvFirstname,conn,doiEidMap)
+				#auids_surname = searchAuthorIds_SurnameName_v2(doisCandidate,cvSurname,None,conn,doiEidMap)
+				auids_surnameName = searchAuthorIds_SurnameName_v3(eidsCandidate,cvSurname,cvFirstname,conn,doiEidMap)
+				auids_surname = searchAuthorIds_SurnameName_v3(eidsCandidate,cvSurname,None,conn,doiEidMap)
 				auid_intersection = searchAuthorId_intersection(doisCandidate,doiEidMap,pathAbstracts)
 				
 				# se non ho trovato match => inserisco match con auid NULL ed esco
@@ -303,7 +377,7 @@ def computeMatch_SurnameName(dbFilename,fileAuthorDoisMapping):
 					if auid_intersection in auids_surnameName or auid_intersection in auids_surname:
 						print ("ERROR (auid_intersection): this should not happen. Exit.")
 						sys.exit()
-					matchTuple = (idCv,auid_surnameName,False,False,True,len(doisCandidate),len(eidsCandidate))
+					matchTuple = (idCv,auid_intersection,False,False,True,len(doisCandidate),len(eidsCandidate))
 					#print (matchTuple)
 					mylib.create_match(conn,matchTuple)
 				'''	
