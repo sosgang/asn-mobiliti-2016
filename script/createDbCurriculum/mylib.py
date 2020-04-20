@@ -663,6 +663,20 @@ def create_match(conn, match):
 	return cur.lastrowid
 
 
+def create_cvidDoiEid(conn, cvidDoiEid):
+	"""
+	Create a new record into the cvidDoiEid table
+	:param conn:
+	:param cvidDoiEid:
+	:return: cvidDoiEid id
+	"""
+	sql = ''' INSERT INTO cvidDoiEid(cvId,doi,eid)
+			  VALUES(?,?,?) '''
+	cur = conn.cursor()
+	cur.execute(sql, cvidDoiEid)
+	return cur.lastrowid
+
+
 def select_match_caseInsensitive(conn,eid,surname,firstname):
 	q = """
 		SELECT scopusAuthor.auid AS auid

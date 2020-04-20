@@ -243,7 +243,7 @@ def	searchAuthorId_intersection(dois,doiEidMap,path,minPapersInIntersection=2):
 
 	
 
-def computeMatch_SurnameName(dbFilename,fileAuthorDoisMapping):
+def computeMatch(dbFilename,fileAuthorDoisMapping):
 	
 	sql_create_matchCvidAuid_table = """CREATE TABLE IF NOT EXISTS matchCvidAuid (
 										cvId text NOT NULL,
@@ -456,7 +456,7 @@ def computeMatch_SurnameName(dbFilename,fileAuthorDoisMapping):
 					continue
 				'''
 					
-computeMatch_SurnameName(conf.dbFilename,fileAuthorDoisMapping_postStep07)
+computeMatch(conf.dbFilename,fileAuthorDoisMapping_postStep07)
 '''
 def idCvInMatch(cvId,conn):
 	queries = [
