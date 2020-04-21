@@ -103,20 +103,20 @@ def addManualMatches(tsvMatches,dbFilename):
 def downloadPublications(dbFilename, folder):
 	conn = mylib.create_connection(dbFilename)
 	
-	i = 0
+	#i = 0
 	with conn:
 		rows = select_AuidInMatch(conn)
 		for row in rows:
-			if i == 10:
-				break
+			#if i == 10:
+			#	break
 			authorId = row[0]
-			print (auid)
-			j = mylib.getPublicationList(authorId)
+			print (authorId)
+			j = mylib.getPublicationList(authorId, folder)
 			if j is not None and mylib.saveJsonPubs(j, authorId, folder):
 				print (authorId + ': Saved to file.')
 			else:
 				print (authorId + ': None -> not saved (i.e. not found or json already downloaded).')
-			i += 1
+			#i += 1
 
 #addManualMatches(tsvManualMatch,conf.dbFilename)
 

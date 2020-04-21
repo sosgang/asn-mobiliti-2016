@@ -15,6 +15,7 @@ import urllib.parse
 import sqlite3
 from sqlite3 import Error
 
+sys.path.append('..')
 import apikeys
 
 apiURL_Abstract = {
@@ -105,8 +106,8 @@ def mergeJson(json1, json2):
 	return json1
 
 
-def getPublicationList(authorId):
-	jFilename = pathOutput + authorId + ".json"
+def getPublicationList(authorId, pathPublicationList):
+	jFilename = pathPublicationList + authorId + ".json"
 	if os.path.exists(jFilename):
 		# json file already downloaded => return None
 		print ("Author %s: publication list already downloaded -> skip" % authorId)
