@@ -15,10 +15,117 @@ import urllib.parse
 import sqlite3
 from sqlite3 import Error
 
+import apikeys
+
 apiURL_Abstract = {
 	'doi': 'https://api.elsevier.com/content/abstract/doi/',
 	'eid': 'https://api.elsevier.com/content/abstract/eid/'
 }
+
+apiURL_Search = "https://api.elsevier.com/content/search/scopus"
+
+
+
+##### TODO ##### TODO ##### TODO ##### TODO ##### TODO #####
+# controlla che json dell'abstract ritornato da api sia ok
+##### TODO ##### TODO ##### TODO ##### TODO ##### TODO #####
+def checkAbsFormat(j):
+	#print (j)
+	numRes = int(j["search-results"]["opensearch:totalResults"])
+	pubs = j["search-results"]["entry"]
+	if numRes == len(pubs):
+		return True
+	else:
+		print (j["search-results"]["opensearch:Query"]["@searchTerms"] + " - ERROR: numRes=" + str(numRes) + ", numPubs in Json=" + str(len(pubs)))
+		return False
+
+
+def saveJsonPubs(j, authorId, pathOutput):
+
+	if (checkAbsFormat(j)):
+		if not os.path.isdir(pathOutput):
+			os.makedirs(pathOutput)
+			
+		completepath = os.path.join(pathOutput, authorId + '.json')
+
+		with open(completepath, 'w') as outfile:
+			json.dump(j, outfile, indent=3)
+		
+		return True
+	else:
+		return False
+
+
+#https://api.elsevier.com/content/search/scopus?apikey=f5f5306cfd6042a38e90dc053d410c56&httpAccept=application/json&query=AU-ID(55303032000)&view=COMPLETE&start=25&count=26
+def getPublicationPage(authorId, start, max_retry=2, retry_delay=1):
+	
+	retry = 0
+	cont = True
+	while retry < max_retry and cont:
+
+		query = "AU-ID(" + authorId + ")"
+		params = {"apikey":apikeys.keys[0], "httpAccept":"application/json", "query": query, "view": "COMPLETE", "start": start}
+		r = requests.get(apiURL_Search, params=params)
+				
+		# quota exceeded -> http 429 (see https://dev.elsevier.com/api_key_settings.html)
+		if r.status_code == 429:
+			print ("Quota exceeded for key " + apikeys.keys[0] + " - EXIT.")
+			apikeys.keys.pop(0)
+		
+		elif r.status_code > 200 and r.status_code < 500:
+			print(u"{}: errore nella richiesta: {}".format(r.status_code, r.url))
+			return None
+
+		if r.status_code != 200:
+			retry += 1
+			if retry < max_retry:
+				time.sleep(retry_delay)
+			continue
+
+		cont = False 
+			 
+	if retry >= max_retry: 
+		return None 
+ 
+	j = r.json() 
+	j['request-time'] = str(datetime.datetime.now().utcnow())
+	# TO DECODE:
+	#oDate = datetime.datetime.strptime(json['request-time'], '%Y-%m-%d %H:%M:%S.%f')
+	return j	
+
+
+def mergeJson(json1, json2):
+	try:
+		pubs1 = json1["search-results"]["entry"]
+		pubs2 = json2["search-results"]["entry"]
+		pubs12 = pubs1 + pubs2
+		json1["search-results"]["entry"] = pubs12
+	except:
+		print ("ERROR in mergeJson()")
+	return json1
+
+
+def getPublicationList(authorId):
+	jFilename = pathOutput + authorId + ".json"
+	if os.path.exists(jFilename):
+		# json file already downloaded => return None
+		print ("Author %s: publication list already downloaded -> skip" % authorId)
+		return None
+	else:
+		#print ("NOT FOUND: " + authorId)
+		j = getPublicationPage(authorId, 0)
+		try:
+			numResults = int(j["search-results"]["opensearch:totalResults"])
+			numDownloaded = 25
+			while numDownloaded < numResults:
+				print (authorId)
+				jPart = getPublicationPage(authorId, numDownloaded)
+				j = mergeJson(j, jPart)
+				numDownloaded += 25
+		except:
+			print ("ERROR in getPublicationList()")
+		return j
+
 
 #'https://api.elsevier.com/content/abstract/scopus_id/0032717048?apikey=5953888c807d52ee017df48501d3e598&httpAccept=application/json&view=FULL'
 def getAbstract(doi, doiOrEid, apikeys, max_retry=2, retry_delay=1):
