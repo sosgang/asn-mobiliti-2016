@@ -41,11 +41,22 @@ def select_match(conn,idCv):
 	return rows 
 
 
-def select_AuidInMatch(conn):
+def select_AuidInMatch_Cv(conn):
 	q = """
 		SELECT DISTINCT auid
 		FROM matchCvidAuid
 		WHERE auid NOT NULL
+		"""
+	cur = conn.cursor()
+	cur.execute(q)
+	rows = cur.fetchall()
+	return rows 
+
+
+def select_AuidInMatch_Cercauniversita(conn):
+	q = """
+		SELECT distinct authorId
+		FROM mapping
 		"""
 	cur = conn.cursor()
 	cur.execute(q)
@@ -100,12 +111,12 @@ def addManualMatches(tsvMatches,dbFilename):
 				#mylib.create_cvidDoiEid(conn,myTuple)
 
 
-def downloadPublications(dbFilename, folder):
+def downloadPublicationsCv(dbFilename, folder):
 	conn = mylib.create_connection(dbFilename)
 	
 	#i = 0
 	with conn:
-		rows = select_AuidInMatch(conn)
+		rows = select_AuidInMatch_Cv(conn)
 		for row in rows:
 			#if i == 10:
 			#	break
@@ -118,6 +129,27 @@ def downloadPublications(dbFilename, folder):
 				print (authorId + ': None -> not saved (i.e. not found or json already downloaded).')
 			#i += 1
 
+
+def downloadPublicationsCercauniversita(dbFilename, folder):
+	conn = mylib.create_connection(dbFilename)
+	
+	#i = 0
+	with conn:
+		rows = select_AuidInMatch_Cercauniversita(conn)
+		for row in rows:
+			#if i == 10:
+			#	break
+			authorId = str(row[0])
+			print (authorId)
+			j = mylib.getPublicationList(authorId, folder)
+			if j is not None and mylib.saveJsonPubs(j, authorId, folder):
+				print (authorId + ': Saved to file.')
+			else:
+				print (authorId + ': None -> not saved (i.e. not found or json already downloaded).')
+			#i += 1
+
+
 #addManualMatches(tsvManualMatch,conf.dbFilename)
 
-downloadPublications(conf.dbFilename, outputFolder)
+#downloadPublicationsCv(conf.dbFilename, outputFolder)
+downloadPublicationsCercauniversita(conf.dbFilenameCercauniversita, outputFolder)
